@@ -1,0 +1,3035 @@
+/* ================================================================
+   CSS Custom Properties — light (default) + dark overrides
+   ================================================================ */
+:root {
+  color-scheme: light dark;
+
+  /* Panel height — updated by ETAPanel JS on every snap (default = collapsed 80px) */
+  --panel-height: 80px;
+
+  /* Backgrounds */
+  --bg:           #f8fafc;
+  --surface:      #ffffff;
+  --surface-over: rgba(255, 255, 255, 0.97);
+  --surface-head: rgba(255, 255, 255, 0.95);
+  --surface-bbl:  rgba(255, 255, 255, 0.96); /* marker bubble */
+
+  /* Borders */
+  --border:        #e2e8f0;
+  --border-subtle: #f1f5f9;
+
+  /* Text */
+  --text-1: #0f172a;  /* primary */
+  --text-2: #64748b;  /* secondary */
+  --text-3: #94a3b8;  /* tertiary / placeholder */
+  --text-4: #475569;  /* medium */
+
+  /* Accent (blue) */
+  --accent:      #2563eb;
+  --accent-h:    #1d4ed8; /* hover */
+  --accent-tint: #eff6ff; /* tinted background */
+
+  /* Shadows */
+  --shadow-s: 0 2px 8px  rgba(0, 0, 0, 0.18);
+  --shadow-m: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-l: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:           #0f172a;
+    --surface:      #1e293b;
+    --surface-over: rgba(15, 23, 42, 0.97);
+    --surface-head: rgba(15, 23, 42, 0.95);
+    --surface-bbl:  rgba(30, 41, 59, 0.96);
+
+    --border:        #334155;
+    --border-subtle: #283548;
+
+    --text-1: #f1f5f9;
+    --text-2: #94a3b8;
+    --text-3: #64748b;
+    --text-4: #cbd5e1;
+
+    --accent:      #3b82f6;
+    --accent-h:    #2563eb;
+    --accent-tint: rgba(59, 130, 246, 0.15);
+
+    --shadow-s: 0 2px 8px  rgba(0, 0, 0, 0.50);
+    --shadow-m: 0 4px 16px rgba(0, 0, 0, 0.40);
+    --shadow-l: 0 8px 24px rgba(0, 0, 0, 0.40);
+  }
+}
+
+/* ================================================================
+   Material Symbols
+   ================================================================ */
+.material-symbols-outlined {
+  vertical-align: middle;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* ================================================================
+   Reset
+   ================================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ================================================================
+   Buttons
+   ================================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+  min-height: 48px;
+  text-decoration: none;
+}
+.btn:active   { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-h); }
+
+.btn-secondary { background: var(--border-subtle); color: var(--text-1); }
+.btn-secondary:hover:not(:disabled) { background: var(--border); }
+
+.btn-ghost { background: transparent; color: var(--text-2); border: 1px solid rgba(90, 90, 90, 0.22); }
+.btn-ghost:hover:not(:disabled) { background: var(--border-subtle); }
+
+.btn-full { width: 100%; }
+
+/* Small button variant — min 44px touch target */
+.btn-sm {
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  min-height: 44px;
+}
+
+/* Danger button — "End meetup" */
+.btn-danger { background: #fee2e2; color: #dc2626; }
+.btn-danger:hover:not(:disabled) { background: #fecaca; }
+
+/* Success button — "I'm Leaving Now" */
+.btn-success { background: #16a34a; color: #fff; }
+.btn-success:hover:not(:disabled) { background: #15803d; }
+
+/* ================================================================
+   Inputs
+   ================================================================ */
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  background: var(--surface);
+  color: var(--text-1);
+  min-height: 48px;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--accent); }
+
+/* ================================================================
+   Loading
+   ================================================================ */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100dvh;
+  font-size: 16px;
+  color: var(--text-2);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.error-msg {
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ================================================================
+   Home
+   ================================================================ */
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  min-height: 100dvh;
+  gap: 48px;
+}
+
+.home-hero { text-align: center; }
+
+.home-hero h1 {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text-1);
+}
+
+.home-hero p {
+  margin-top: 10px;
+  font-size: 17px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ================================================================
+   Create
+   ================================================================ */
+.create {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+}
+
+.create-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 16px;
+  pointer-events: none;
+}
+
+.search-input {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  background: var(--surface);
+  color: var(--text-1);
+  min-height: 48px;
+  box-shadow: var(--shadow-m);
+  pointer-events: auto;
+  transition: border-color 0.15s;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--text-3); }
+
+/* ---- Meetup nickname input (Create page, above destination search) ---- */
+.nickname-input-wrap {
+  position: relative;
+  pointer-events: auto;
+  margin-bottom: 8px;
+}
+
+.nickname-input {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--text-1);
+  box-sizing: border-box;
+  box-shadow: var(--shadow-s);
+  pointer-events: auto;
+  transition: border-color 0.15s;
+}
+.nickname-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.nickname-input::placeholder { color: var(--text-3); font-weight: 400; }
+
+.nickname-counter {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+.map-container {
+  position: absolute !important;
+  inset: 0;
+}
+
+.create-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 16px 16px 28px;
+  background: var(--surface-over);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.destination-label {
+  font-size: 14px;
+  color: var(--text-4);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================================
+   Session
+   ================================================================ */
+.session {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Header: normal-flow flex item — not absolutely positioned.
+   z-index: 200 keeps it above Google Maps POI labels, route polylines, and
+   other map overlays when users pan the map. */
+.session-header {
+  flex-shrink: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  background: var(--surface-head);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Inner wrapper: single-row layout, capped at 1200px on ultra-wide monitors */
+.session-header-inner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Row: truncating text block + icon buttons ── */
+.session-header-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+/* Left text block — expands to fill space, clips overflow so buttons stay visible */
+.session-header-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Meetup nickname (or destination name as fallback) */
+.session-header-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.session-header-title::first-letter { text-transform: uppercase; }
+
+/* Action buttons wrapper — flex-shrink: 0 so text can never push buttons off-screen */
+.session-header-btns {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Ghost icon button — Navigate, Share (40px touch target) */
+.header-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-1);
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.header-icon-btn:hover  { background: var(--border-subtle); }
+.header-icon-btn:active { transform: scale(0.93); }
+
+/* Destination address sub-line — truncates so it never pushes the icon buttons */
+.session-dest-address {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1.3;
+  border-radius: 4px;
+  transition: opacity 0.1s;
+}
+.session-dest-address:active { opacity: 0.65; }
+
+@keyframes addr-bounce {
+  0%   { opacity: 1;    }
+  40%  { opacity: 0.45; }
+  100% { opacity: 1;    }
+}
+.session-dest-address-bounce { animation: addr-bounce 220ms ease-out; }
+
+/* Flex body below header: map + panel side-by-side on desktop */
+.session-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Map area: fills all remaining space, contains all overlays */
+.session-map-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Desktop sidebar layout — map + ETA panel side-by-side */
+@media (min-width: 768px) {
+  .session-body { flex-direction: row; }
+
+  .session-map-wrap { min-height: 0; }
+
+  .eta-panel {
+    position: relative !important;
+    bottom: auto !important; left: auto !important; right: auto !important;
+    width: 380px;
+    height: 100%;
+    transform: none !important;
+    transition: none !important;
+    border-top: none !important;
+    border-left: 1px solid var(--border);
+    border-radius: 0 !important;
+    will-change: auto;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  /* No drag handle on desktop */
+  .eta-handle-pill { display: none !important; }
+
+  /* Pinned area: no touch-action override, pointer events restored */
+  .eta-pinned-area {
+    touch-action: auto !important;
+    border-radius: 0 !important;
+  }
+
+  /* Tab pane scrolls freely on desktop */
+  .eta-tab-pane {
+    overflow-y: auto !important;
+  }
+
+  /* Recenter button: no panel-height offset needed on desktop */
+  .recenter-btn { bottom: 16px !important; }
+
+  /* Floating controls always visible on desktop (no full-snap hiding) */
+  .notes-reopen-btn { bottom: 16px !important; }
+
+  /* Start-trip bar: flat bottom edge within map column */
+  .start-trip-bar { border-radius: 0; }
+
+  /* Notes auto-collapse has no effect on desktop (banner always shown) */
+  .notes-banner-auto-collapsed {
+    max-height: 200px !important;
+    opacity: 1 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    border-bottom-width: 1px !important;
+    pointer-events: auto !important;
+  }
+
+  /* Notes info button irrelevant on desktop */
+  .notes-info-btn { display: none !important; }
+}
+
+
+/* ---- Notes info button (shown when banner auto-collapses on mobile) ---- */
+.notes-info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #bfdbfe;
+  background: var(--accent-tint);
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.notes-info-btn:hover { background: #dbeafe; }
+@media (prefers-color-scheme: dark) {
+  .notes-info-btn { border-color: rgba(59, 130, 246, 0.4); color: #93c5fd; }
+  .notes-info-btn:hover { background: rgba(59, 130, 246, 0.25); }
+}
+
+/* ---- Nav tip banner ---- */
+/* Appears once below the header after first "Navigate" tap */
+.nav-tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;            /* tap to dismiss */
+  box-shadow: var(--shadow-s);
+  animation: banner-fade-in 0.25s ease;
+}
+
+@keyframes banner-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ---- Session ended / error message screen ---- */
+.session-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 100dvh;
+  padding: 40px 24px;
+  text-align: center;
+}
+.session-message h2 { font-size: 24px; font-weight: 700; }
+.session-message p  { color: var(--text-2); font-size: 16px; max-width: 320px; }
+
+.session-ended-icon { font-size: 52px; line-height: 1; }
+
+/* ---- Kebab menu (⋮ More options) ---- */
+.kebab-menu {
+  position: relative;
+}
+
+/* 44px square touch target matching .btn-sm height */
+.kebab-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-2);
+  border-radius: 8px;
+  font-family: inherit;
+  line-height: 1;
+  letter-spacing: 0;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.kebab-btn:hover  { background: var(--border-subtle); color: var(--text-1); }
+.kebab-btn:active { transform: scale(0.93); }
+
+/* Dropdown card — absolutely positioned below the button */
+.kebab-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-m);
+  min-width: 160px;
+  z-index: 50;
+  overflow: hidden;
+  animation: kebab-appear 0.12s ease;
+}
+
+@keyframes kebab-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* Individual menu items — min 44px touch target */
+.kebab-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 13px 16px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-1);
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.kebab-option:hover          { background: var(--border-subtle); }
+.kebab-option-danger         { color: #dc2626; }
+
+@media (prefers-color-scheme: dark) {
+  .kebab-option-danger { color: #f87171; }
+}
+
+/* ---- Start trip bar ---- */
+/* Floats above the ETA panel (z-index 110 > panel z-index 100) */
+.start-trip-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 110;
+  background: var(--surface-over);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px max(24px, env(safe-area-inset-bottom, 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.start-trip-hint {
+  font-size: 14px;
+  color: var(--text-2);
+  text-align: center;
+}
+
+/* ================================================================
+   Travel mode selector (inside start-trip-bar)
+   ================================================================ */
+.travel-mode-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 62px;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background 0.15s;
+}
+.mode-btn:active { transform: scale(0.95); }
+
+.mode-btn-selected {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.mode-icon  { font-size: 22px; line-height: 1; }
+.mode-label { font-size: 11px; font-weight: 600; color: var(--text-2); }
+.mode-btn-selected .mode-label { color: var(--accent); }
+
+/* ================================================================
+   ETA Panel — 3-point snap sheet (mobile) / fixed sidebar (desktop)
+   ================================================================ */
+/* Panel height = 85vh. JS inline style controls transform (collapsed /
+   half / full). CSS only sets the initial collapsed state so the first
+   paint is correct before JS initialises.                              */
+.eta-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--surface-over);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  height: 85vh;
+  /* Initial collapsed position — JS overrides this immediately on mount */
+  transform: translateY(calc(85vh - 80px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  will-change: transform;
+}
+
+/* ---- Pinned drag area: handle + summary + tab bar ---- */
+/* position: sticky keeps it visible when scrolling in sidebar mode */
+.eta-pinned-area {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface-over);
+  backdrop-filter: blur(8px);
+  touch-action: none;   /* critical: prevents browser stealing vertical drags */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 16px 0;
+  border-radius: 20px 20px 0 0;
+}
+
+/* Visual drag pill — wider + higher contrast than before */
+.eta-handle-pill {
+  width: 60px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-3);
+  opacity: 0.6;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+/* Summary row */
+.eta-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.eta-summary-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Tab bar ---- */
+.eta-tab-bar {
+  display: flex;
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.eta-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;   /* overlap parent border-bottom */
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.eta-tab-btn-active {
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Unread badge on Activity tab */
+.eta-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 6px;
+}
+
+/* ---- Tab content wrapper ---- */
+/* Both panes are always mounted — active is relative, inactive is
+   absolutely positioned with visibility:hidden so scroll is preserved.  */
+.eta-tab-content-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;  /* clips absolutely-positioned hidden pane */
+}
+
+/* Active pane */
+.eta-tab-pane {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  /* Safe-area padding so last card isn't behind the iOS home indicator */
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 20px));
+}
+
+/* Inactive pane — kept in layout tree to preserve scrollTop */
+.eta-tab-pane-hidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Empty state in Activity tab */
+.eta-activity-empty {
+  padding: 24px 16px;
+  font-size: 13px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* ─── Participant avatar ─────────────────────────────────────────────────── */
+.eta-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* ─── 4-row participant card ──────────────────────────────────────────────── */
+.eta-card {
+  padding: 10px 16px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.eta-card:last-child { border-bottom: none; }
+
+.eta-card-me           { background: var(--accent-tint); }
+.eta-card-almost-there { background: #fff7ed; }
+.eta-card-paused       { opacity: 0.6; }
+.eta-card-arrived      { opacity: 0.6; }
+.eta-card-waiting      { opacity: 0.65; }
+
+@media (prefers-color-scheme: dark) {
+  .eta-card-almost-there { background: rgba(251, 146, 60, 0.10); }
+}
+
+/* Row 1 — Avatar + name + pills  ·····  Mode icon + ETA */
+.eta-card-r1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding-bottom: 4px;
+}
+
+.eta-card-r1-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.eta-card-r1-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Truncating name (with "(you)" suffix) */
+.eta-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* "1st" / "2nd" ordinal pill */
+.eta-ordinal-pill {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Host badge */
+.eta-host-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(0, 102, 204, 0.15);
+  color: var(--accent-color, #0066CC);
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.eta-r1-mode      { font-size: 14px; line-height: 1; flex-shrink: 0; }
+
+.eta-r1-countdown {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.eta-r1-muted { color: var(--text-3); }
+
+/* Arrival clock time shown for arrived cards */
+.eta-r1-arrived-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* ✓ green check badge for arrived cards */
+.eta-arrived-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .eta-arrived-check { background: rgba(22, 163, 74, 0.20); color: #4ade80; }
+}
+
+/* ⏸ pause badge shown in paused card name row */
+.eta-paused-badge { font-size: 13px; flex-shrink: 0; opacity: 0.7; }
+
+/* Row 2 — Status label  ·····  Arrival time · Distance + overflow */
+.eta-card-r2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.eta-card-r2-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.eta-status-label {
+  font-size: 12px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.eta-status-paused { font-style: italic; color: var(--text-3); }
+
+.eta-arrival-time-label { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.eta-dot-sep            { font-size: 11px; color: var(--text-3); }
+.eta-dist-label         { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+
+/* "+5m" manual delay badge */
+.eta-delay-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  border-radius: 4px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ··· overflow trigger in row 2 / row 4 */
+.eta-overflow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-3);
+  cursor: pointer;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.eta-overflow-btn:hover  { background: var(--border-subtle); color: var(--text-2); }
+.eta-overflow-btn:active { transform: scale(0.9); }
+
+/* Row 3 — Warning pills (GPS lost / stale location) */
+.eta-card-r3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 6px;
+}
+
+.eta-warning-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.28);
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+@media (prefers-color-scheme: dark) {
+  .eta-warning-pill {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.25);
+  }
+}
+
+/* Button variant of the stale pill — resets browser button defaults, keeps pill look */
+.eta-warning-pill-btn {
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.eta-warning-pill-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* Row 4 — Icon-only action buttons */
+.eta-card-r4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 2px;
+}
+
+/* Base 36px circular icon button */
+.eta-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border-subtle);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.eta-icon-btn:hover  { filter: brightness(1.1); }
+.eta-icon-btn:active { transform: scale(0.88); }
+.eta-icon-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Tinted icon button variants */
+.eta-icon-btn-pause    { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.eta-icon-btn-resume   { background: rgba(22, 163, 74, 0.12); color: #16a34a; }
+.eta-icon-btn-bump     { background: rgba(217, 119, 6, 0.12); color: #d97706; }
+.eta-icon-btn-overflow { font-size: 12px; letter-spacing: 1px; font-weight: 700; }
+/* Active state — emoji picker is open */
+.eta-icon-btn-active   { background: var(--accent-tint); color: var(--accent); }
+
+@media (prefers-color-scheme: dark) {
+  .eta-icon-btn-pause  { background: rgba(239, 68, 68, 0.20); }
+  .eta-icon-btn-resume { background: rgba(22, 163, 74, 0.20); }
+  .eta-icon-btn-bump   { background: rgba(217, 119, 6, 0.20); }
+}
+
+/* ── Emoji strip (inline below Row 4, horizontally scrollable) ── */
+.eta-emoji-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+.eta-emoji-strip::-webkit-scrollbar { display: none; }
+
+/* Individual emoji buttons (used in strip) */
+.eta-emoji-btn {
+  font-size: 28px;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+  flex-shrink: 0;
+}
+.eta-emoji-btn:hover    { background: var(--border-subtle); }
+.eta-emoji-btn-active   { background: var(--accent-tint); border-color: var(--accent); }
+
+/* "⚡ Close race" badge — within 60 s of the next participant */
+.eta-close-race {
+  font-size: 10px;
+  font-weight: 600;
+  color: #ea580c;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 4px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+@media (prefers-color-scheme: dark) {
+  .eta-close-race {
+    background: rgba(234, 88, 12, 0.15);
+    border-color: rgba(234, 88, 12, 0.30);
+  }
+}
+
+/* Panel-level feedback toast (bump confirmed / ETA copied) */
+.eta-panel-toast {
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  animation: toast-in 180ms ease-out both;
+}
+
+/* Section divider inside ETA panel */
+.eta-section-header {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Pulsing orange dot shown next to "Almost there!" status text */
+@keyframes eta-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%       { opacity: 0.3; transform: scale(0.65); }
+}
+
+.eta-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f97316;
+  margin-right: 5px;
+  vertical-align: middle;
+  animation: eta-pulse 1.1s ease-in-out infinite;
+}
+
+/* ─── Portal-based popovers (rendered via createPortal to document.body) ──── */
+
+/* Full-viewport transparent backdrop — tap/click outside to close */
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+}
+
+/* Floating card anchored near the triggering button */
+.popover-card {
+  position: fixed;
+  z-index: 901;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-l);
+  overflow: hidden;
+  animation: popover-in 120ms ease-out both;
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* Vertical list of action items */
+.popover-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-1);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.popover-item:last-child { border-bottom: none; }
+.popover-item:hover:not(:disabled)  { background: var(--border-subtle); }
+.popover-item:active:not(:disabled) { background: var(--border); }
+.popover-item:disabled { opacity: 0.45; cursor: default; }
+
+/* 2×2 travel-mode selector grid */
+.popover-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border-subtle);
+  padding: 1px;
+}
+
+.popover-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--surface);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.popover-mode-btn:hover:not(:disabled)  { background: var(--border-subtle); }
+.popover-mode-btn:active:not(:disabled) { transform: scale(0.92); }
+.popover-mode-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+.popover-mode-btn-active { background: var(--accent-tint); }
+.popover-mode-btn-active .popover-mode-label { color: var(--accent); }
+
+.popover-mode-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  line-height: 1;
+}
+
+/* Small note / error text inside popover (cooldown notice, route error) */
+.popover-note {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 6px 12px;
+  margin: 0;
+}
+
+.popover-error {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--error, #dc2626);
+  text-align: center;
+  padding: 6px 12px;
+  margin: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .popover-error { color: #f87171; }
+}
+
+/* Inline mode-switch cooldown hint — appears below Row 4 action buttons */
+.eta-cooldown-hint-wrap {
+  min-height: 20px; /* reserves space so Row 4 doesn't shift when hint appears/disappears */
+}
+.eta-cooldown-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 2px 4px;
+}
+
+/* ================================================================
+   Participant markers (OverlayView)
+   ================================================================ */
+.p-marker {
+  /* Fixed-size container matching the dot (36×36) so getPixelPositionOffset
+     always centres the dot on the coordinate — no dynamic measurement needed. */
+  position: relative;
+  width: 36px;
+  height: 36px;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.p-marker-stale {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+.p-marker-bubble {
+  /* Floats above the dot via absolute positioning — independent of container height */
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-bbl);
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: var(--shadow-s);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.p-marker-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.p-marker-stale-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #b45309;
+  white-space: nowrap;
+}
+
+.p-marker-host-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--accent-color, #0066CC);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* 36px circular dot with initial letter */
+.p-marker-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Status emoji badge — floats below the dot on the map marker */
+.p-marker-emoji-badge {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  line-height: 1;
+  background: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* Stale: dashed border to signal paused location */
+.p-marker-dot-stale {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.75);
+}
+
+/* Paused marker — opacity only, NO grayscale or dashed border.
+   Intentional pause is DISTINCT from stale (lost signal):
+   stale = unexpected silence; paused = deliberate ghost mode. */
+.p-marker-paused {
+  opacity: 0.35;
+}
+
+/* "location paused" label inside the name bubble */
+.p-marker-paused-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  white-space: nowrap;
+  font-style: italic;
+}
+
+/* ⏸ icon overlay — centered on dot circle, white */
+.p-marker-pause-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: #fff;
+}
+
+/* Arrived: green ring via box-shadow (keeps white border intact) */
+.p-marker-dot-arrived {
+  box-shadow: 0 0 0 3px #16a34a, 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* First letter of participant's name */
+.p-marker-initial {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Small green checkmark badge — bottom-right of the dot */
+.p-marker-check {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ================================================================
+   Destination marker (OverlayView)
+   ================================================================ */
+.dest-marker {
+  pointer-events: none;
+}
+
+/* Google Maps-style red teardrop pin — drop-shadow replaces the pulse ring */
+.dest-marker-svg {
+  display: block;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.40));
+}
+
+/* ================================================================
+   Re-center button
+   ================================================================ */
+/* Tracks --panel-height CSS var so it always sits 16px above the panel.
+   --panel-height defaults to 80px (collapsed) and updates on every snap. */
+.recenter-btn {
+  position: absolute;
+  bottom: calc(var(--panel-height, 80px) + 16px);
+  right: 16px;
+  z-index: 90;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-1);
+  transition: box-shadow 0.15s, transform 0.1s, opacity 200ms ease, bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.recenter-btn:hover  { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); }
+.recenter-btn:active { transform: scale(0.93); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15); }
+
+/* Hide floating controls when panel is fully expanded */
+.panel-at-full .recenter-btn,
+.panel-at-full .notes-reopen-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Pre-trip location acquiring overlay ──────────────────────────────────── */
+.pre-trip-locating-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.pre-trip-locating-text {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 8px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  animation: location-pulse 2s ease-in-out infinite;
+}
+
+@keyframes location-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+
+/* "I'm Leaving Now" button — dimmed while locating, scale-in when ready */
+.btn-success:disabled { opacity: 0.5; }
+
+@keyframes btn-location-ready {
+  from { transform: scale(0.95); }
+  to   { transform: scale(1.0); }
+}
+.btn-location-ready { animation: btn-location-ready 0.35s ease-out; }
+
+/* Spectator ghost button — below "I'm Leaving Now", muted appearance */
+.btn-spectate {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-2);
+  opacity: 0.6;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-spectate:hover:not(:disabled) { opacity: 0.85; }
+.btn-spectate:disabled { opacity: 0.25; pointer-events: none; }
+
+/* Spectating card — ultra-compact, muted */
+.eta-card-spectating { opacity: 0.55; }
+.eta-status-muted    { color: var(--text-2); font-style: italic; }
+
+/* "Start Trip" button inside spectator card */
+.eta-spectate-start-btn {
+  margin-top: 6px;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* Follow Me active state — filled accent background */
+.recenter-btn-follow {
+  background: var(--accent);
+  color: #fff;
+}
+.recenter-btn-follow:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+
+/* ================================================================
+   Status banners (offline + location denied + celebration)
+   ================================================================ */
+/* Sits at the top of .session-map-wrap — which starts just below the header */
+.session-banners {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.geo-denied-banner,
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.celebration-banner {
+  background: #dcfce7;
+  border-bottom: 1px solid #bbf7d0;
+  color: #14532d;
+  font-weight: 600;
+  font-size: 15px;
+  animation: slide-down 0.3s ease;
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.geo-denied-banner {
+  background: #fef3c7;
+  border-bottom: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.offline-banner {
+  background: #fff7ed;
+  border-bottom: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+/* ---- Notes banner (group note set by host) ---- */
+.notes-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--accent-tint);
+  border-bottom: 1px solid #bfdbfe;
+  font-size: 13px;
+  color: var(--accent);
+  animation: banner-fade-in 0.2s ease;
+  /* Auto-collapse transition properties */
+  overflow: hidden;
+  max-height: 200px;
+  transition: max-height 0.35s ease, opacity 0.25s ease,
+              padding-top 0.35s ease, padding-bottom 0.35s ease,
+              border-bottom-width 0.35s ease;
+}
+
+/* Collapsed state on mobile — reversed by desktop media query above */
+.notes-banner-auto-collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-width: 0;
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .notes-banner { border-bottom-color: rgba(59, 130, 246, 0.3); }
+}
+
+.notes-banner-icon { flex-shrink: 0; font-size: 15px; }
+
+.notes-banner-text {
+  flex: 1;
+  line-height: 1.45;
+  word-break: break-word;
+  color: var(--text-1);
+}
+
+.notes-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.notes-banner-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-2);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.notes-banner-btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+/* Edit button: larger tap target + SVG icon sizing */
+.notes-banner-btn-edit {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  color: var(--text-2);
+}
+.notes-banner-btn-edit svg {
+  pointer-events: none;
+}
+
+/* Edit mode inside the banner */
+.notes-edit-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notes-edit-textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: none;
+  box-sizing: border-box;
+}
+.notes-edit-textarea:focus { outline: none; }
+
+.notes-edit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notes-edit-counter { font-size: 11px; color: var(--text-3); }
+.notes-edit-counter-warn { color: #ef4444; }
+
+.notes-edit-actions { display: flex; gap: 6px; }
+
+/* Floating re-open button (shown after notes banner is dismissed)
+   Tracks --panel-height so it sits above the panel alongside RecenterButton. */
+.notes-reopen-btn {
+  position: absolute;
+  bottom: calc(var(--panel-height, 80px) + 68px); /* offset above recenter-btn */
+  right: 16px;
+  z-index: 90;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #bfdbfe;
+  background: var(--accent-tint);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-s);
+  transition: background 0.15s, opacity 200ms ease, bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.notes-reopen-btn:hover { background: #dbeafe; }
+
+@media (prefers-color-scheme: dark) {
+  .notes-reopen-btn {
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #93c5fd;
+  }
+  .notes-reopen-btn:hover { background: rgba(59, 130, 246, 0.25); }
+}
+
+/* ================================================================
+   Google Places autocomplete dropdown
+   ================================================================ */
+.pac-container {
+  z-index: 10000 !important;
+  border-radius: 12px;
+  margin-top: 4px;
+  box-shadow: var(--shadow-l);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.pac-item {
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text-1);
+}
+.pac-item:hover    { background: var(--border-subtle); }
+.pac-item-selected { background: var(--accent-tint); }
+.pac-item-query    { color: var(--text-1); }
+.pac-matched       { color: var(--accent); }
+
+/* ================================================================
+   JoinPrompt overlay
+   ================================================================ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.prompt-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slide-up 0.25s ease;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.prompt-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.prompt-subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+  margin-top: -8px;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.prompt-actions .btn { flex: 1; }
+
+/* ================================================================
+   Home — Recent Meetups
+   ================================================================ */
+.history-section {
+  width: 100%;
+  max-width: 480px;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.history-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+/* Inline "Clear" link — no visual button chrome */
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+.btn-link:hover { color: var(--text-2); }
+
+.history-list {
+  list-style: none;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.history-item:last-child { border-bottom: none; }
+
+.history-dest {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.history-dest-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-meta {
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Secondary destination line shown in history when a nickname is the primary label */
+.history-dest-sub {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================================
+   Create — Favorite chips
+   ================================================================ */
+/* Horizontally scrollable strip of saved destinations below search bar */
+.fav-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 0 2px;
+  pointer-events: auto; /* parent create-header has pointer-events: none */
+}
+.fav-chips::-webkit-scrollbar { display: none; }
+
+.fav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  height: 44px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-1);
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-s);
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fav-chip:active { transform: scale(0.96); }
+
+.fav-chip-active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
+/* ================================================================
+   Create — destination row + star button
+   ================================================================ */
+.destination-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.destination-row .destination-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.star-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-3);
+  border-radius: 10px;
+  transition: color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.star-btn:active  { transform: scale(0.88); }
+.star-btn-active  { color: #f59e0b; }
+
+/* ---- Notes input (Create page) ---- */
+.notes-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+  /* auto-grow feel: min 1 line, soft cap at ~2 lines via field-sizing where supported */
+  field-sizing: content;
+  max-height: 3.5em;
+  overflow-y: auto;
+}
+.notes-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.notes-textarea::placeholder { color: var(--text-3); }
+
+.notes-counter {
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: right;
+}
+.notes-counter-warn { color: #ef4444; }
+
+/* ================================================================
+   Create — schedule for later
+   ================================================================ */
+.schedule-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-toggle {
+  font-size: 14px;
+  color: var(--accent);
+  padding: 2px 0;
+  text-align: left;
+}
+
+.schedule-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-datetime-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 15px;
+  font-family: inherit;
+  min-height: 44px;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.schedule-datetime-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.schedule-clear {
+  font-size: 18px;
+  color: var(--text-3);
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+.schedule-clear:hover { color: var(--text-2); }
+
+/* ================================================================
+   Create — arrival radius selector
+   ================================================================ */
+.arrival-radius-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrival-radius-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.arrival-radius-selector {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.arrival-radius-selector::-webkit-scrollbar { display: none; }
+
+.arrival-radius-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 6px 8px;
+  flex: 1;
+  flex-shrink: 0;
+  min-width: 72px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  scroll-snap-align: start;
+  transition: border-color 150ms, background 150ms;
+}
+.arrival-radius-btn:active { transform: scale(0.95); }
+
+.arrival-radius-btn-selected {
+  border-color: var(--accent);
+  background: rgba(0, 102, 204, 0.1);
+}
+
+.arrival-radius-check {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.arrival-radius-icon   { font-size: 20px; line-height: 1; }
+.arrival-radius-meters { font-size: 12px; font-weight: 600; color: var(--text-1); }
+.arrival-radius-label  { font-size: 10px; color: var(--text-2); }
+
+.arrival-radius-btn-selected .arrival-radius-meters,
+.arrival-radius-btn-selected .arrival-radius-label { color: var(--accent); }
+
+.arrival-radius-hint {
+  font-size: 13px;
+  color: var(--text-2);
+  opacity: 0.85;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ================================================================
+   Map tile loading overlay
+   ================================================================ */
+/* Shown while Google Maps is rendering its first set of tiles.
+   Sits above the map (z-index 5) but below all UI chrome (z-index 10+). */
+.map-tile-spinner {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--border-subtle);
+  pointer-events: none;
+  /* No explicit fade — the map tiles appearing underneath naturally covers this */
+}
+
+.map-tile-spinner-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  pointer-events: none;
+}
+
+/* ================================================================
+   Session skeleton loading UI
+   ================================================================ */
+/* Shown while the Maps SDK and Firebase data are loading.
+   Mimics the real layout so the transition feels seamless.           */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.session-skeleton {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Shared shimmer style */
+.skeleton-bar,
+.skeleton-avatar,
+.skeleton-line {
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--border-subtle) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* Header */
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-head);
+  min-height: 68px;
+}
+
+.skeleton-dest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.skeleton-bar-icon  { width: 18px; height: 18px; border-radius: 50%; }
+.skeleton-bar-dest  { width: 140px; height: 16px; }
+.skeleton-header-actions { display: flex; gap: 8px; }
+.skeleton-bar-btn   { width: 64px; height: 36px; border-radius: 8px; }
+
+/* Map area */
+.skeleton-map {
+  flex: 1;
+  background: var(--border-subtle);
+}
+
+/* Bottom panel */
+.skeleton-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface-over);
+  border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+
+.skeleton-panel-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 12px auto 8px;
+}
+
+.skeleton-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.skeleton-item:last-child { border-bottom: none; }
+
+.skeleton-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-line          { height: 12px; border-radius: 4px; }
+.skeleton-line-name     { width: 70%; }
+.skeleton-line-status   { width: 45%; }
+.skeleton-bar-eta       { width: 48px; height: 20px; border-radius: 4px; }
+
+/* ================================================================
+   Location Permission Prompt extras
+   ================================================================ */
+/* Large icon above the title inside the shared .prompt-card */
+.loc-prompt-icon {
+  font-size: 44px;
+  line-height: 1;
+  text-align: center;
+}
+
+/* ================================================================
+   Dark-mode component overrides
+   (things that can't be expressed cleanly with variables alone)
+   ================================================================ */
+@media (prefers-color-scheme: dark) {
+  /* btn-secondary needs a more visible raised surface in dark */
+  .btn-secondary { background: #334155; }
+  .btn-secondary:hover:not(:disabled) { background: #475569; }
+  .btn-ghost { border-color: rgba(255, 255, 255, 0.22); }
+  .btn-ghost:hover:not(:disabled) { background: #334155; }
+
+  /* Emoji strip pill background — lighter on dark surfaces */
+  .eta-emoji-btn { background: rgba(255, 255, 255, 0.08); }
+
+  /* Danger button — keep readable on dark surfaces */
+  .btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+  .btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.25); }
+}
+
+/* ================================================================
+   Toast notification (Feature 6 & 7 — tap-to-copy feedback)
+   ================================================================ */
+.toast-notification {
+  position: fixed;
+  top: 68px; /* just below the session header */
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  color: #f1f5f9;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  animation: toast-in 180ms ease-out forwards;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.94); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1);    }
+}
+
+@media (prefers-color-scheme: dark) {
+  .toast-notification {
+    background: rgba(241, 245, 249, 0.93);
+    color: #0f172a;
+  }
+}
+
+
+
+/* ================================================================
+   Feature 1 — "Almost There" accent toast
+   Slides up from above the ETA panel with a bright green background.
+   Distinct from the dark clipboard toast near the top.
+   ================================================================ */
+.toast-notification-accent {
+  /* Override the top-anchored default position */
+  top: auto;
+  bottom: calc(var(--panel-height, 80px) + 20px);
+  background: #16a34a;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 24px;
+  box-shadow: 0 4px 20px rgba(22, 163, 74, 0.35);
+  animation: toast-accent-in 280ms ease-out forwards;
+}
+
+@keyframes toast-accent-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(14px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0);    }
+}
+
+@media (prefers-color-scheme: dark) {
+  .toast-notification-accent {
+    background: #15803d;
+    box-shadow: 0 4px 20px rgba(21, 128, 61, 0.45);
+  }
+}
+
+/* ================================================================
+   Feature 1d — "Almost there" marker pulse animation
+   Scales the dot up to 1.3× with a glowing ring, plays twice on entry.
+   Uses animation-fill-mode: forwards so after 2 pulses the marker rests
+   in the normal state (no persistent ring once done).
+   ================================================================ */
+@keyframes marker-pulse-glow {
+  0%   { transform: scale(1);   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+  50%  { transform: scale(1.3); box-shadow: 0 0 0 8px rgba(249, 115, 22, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3); }
+  100% { transform: scale(1);   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+}
+
+.p-marker-dot-almost-there {
+  animation: marker-pulse-glow 1s ease-in-out 2; /* two pulses = 2 s total */
+}
+
+/* ================================================================
+   Feature 3 — SMS Nudge button on waiting-to-leave cards
+   Small icon button; shows a countdown when on cooldown.
+   ================================================================ */
+.eta-nudge-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.eta-nudge-btn:hover:not(:disabled)  { border-color: var(--accent); background: var(--accent-tint); }
+.eta-nudge-btn:active:not(:disabled) { transform: scale(0.92); }
+.eta-nudge-btn:disabled              { cursor: default; }
+
+/* Sent / cooldown state — muted countdown number */
+.eta-nudge-btn-sent {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  border-style: dashed;
+}
+
+/* ================================================================
+   Feature 4 — Session Recap overlay
+   Full-screen dark overlay; card centres in viewport.
+   ================================================================ */
+.session-recap-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.80);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200; /* above everything including JoinPrompt (100) */
+  padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  animation: recap-fade-in 0.3s ease;
+}
+
+@keyframes recap-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (min-width: 480px) {
+  .session-recap-overlay {
+    align-items: center;
+  }
+}
+
+.session-recap-card {
+  background: var(--surface);
+  border-radius: 24px;
+  padding: 28px 24px 24px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: slide-up 0.3s ease;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.session-recap-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.session-recap-icon { font-size: 40px; line-height: 1; }
+
+.session-recap-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-1);
+  letter-spacing: -0.3px;
+}
+
+.session-recap-subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.session-recap-empty {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-2);
+  padding: 8px 0;
+}
+
+.session-recap-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Podium entries (🥇 First, 🐢 Most delayed) */
+.session-recap-podium {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-recap-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+}
+
+.session-recap-medal { font-size: 24px; flex-shrink: 0; line-height: 1; }
+
+.session-recap-entry-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.session-recap-entry-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+}
+
+.session-recap-entry-name {
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-recap-entry-aside {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Trip times table */
+.session-recap-trips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-recap-trips-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 6px;
+}
+
+.session-recap-trip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+}
+
+.session-recap-trip-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.session-recap-trip-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-recap-trip-gold { font-size: 13px; }
+
+.session-recap-trip-duration {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ================================================================
+   Feature 5 — Firebase connection status banners
+   Slim banners inside .session-banners (top of map area).
+   ================================================================ */
+.firebase-offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #1e293b;
+  color: #fbbf24; /* amber text */
+  font-size: 12px;
+  font-weight: 500;
+  border-bottom: 1px solid #334155;
+}
+
+/* Animated pulsing dot to the left of the text */
+.firebase-conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  flex-shrink: 0;
+  animation: conn-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.7); }
+}
+
+.firebase-online-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #14532d;
+  color: #86efac;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #166534;
+  animation: banner-fade-in 0.25s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .firebase-offline-banner {
+    background: rgba(30, 41, 59, 0.95);
+    border-bottom-color: rgba(71, 85, 105, 0.5);
+  }
+  .firebase-online-banner {
+    background: rgba(20, 83, 45, 0.9);
+    border-bottom-color: rgba(22, 101, 52, 0.5);
+  }
+}
+
+/* ================================================================
+   Feature 5c — GPS signal lost indicator in ETA card
+   ================================================================ */
+.eta-gps-lost {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  .eta-gps-lost { color: #f87171; }
+}
+
+/* ================================================================
+   Dark mode 2.8a — unified primary surface variable
+   Both the session header and the ETA panel / sidebar use
+   --surface-primary so they share the same base background.
+   ================================================================ */
+:root {
+  --surface-primary: rgba(255, 255, 255, 0.95);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --surface-primary: rgba(15, 23, 42, 0.95); }
+}
+
+/* Apply to header and panel — overrides the individual variables */
+.session-header  { background: var(--surface-primary); }
+.eta-panel       { background: var(--surface-primary); }
+.eta-pinned-area { background: var(--surface-primary); }
+
+/* ================================================================
+   Plan 4.2 — Session activity feed
+   Compact scrollable event log at the bottom of the ETA list.
+   ================================================================ */
+.activity-feed {
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 0 4px;
+}
+
+.activity-feed-header {
+  padding: 2px 16px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.activity-event {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 16px;
+  line-height: 1.45;
+}
+
+.activity-event-text {
+  font-size: 12px;
+  color: var(--text-2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-event-time {
+  font-size: 11px;
+  color: var(--text-3);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ================================================================
+   Plan 4.4 — Pre-trip arrival order preview
+   Subtle informational note at the top of the participant list.
+   ================================================================ */
+.eta-arrival-preview {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border-subtle);
+  line-height: 1.4;
+}
+
+.eta-arrival-preview strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+/* ================================================================
+   Countdown banner (scheduled meetup)
+   Sits inside .session-banners; visually distinct from the group
+   note via a warm yellow background + clock icon prefix.
+   The parent div is never unmounted on expiry — className swap
+   triggers the CSS background/color transition (spec §6).
+   ================================================================ */
+.countdown-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fef9c3;
+  border-bottom: 1px solid #fde047;
+  font-size: 13px;
+  color: #713f12;
+  /* Smooth colour shift when countdown-banner-timeup class is added */
+  transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
+  animation: banner-fade-in 0.2s ease;
+}
+
+.countdown-banner-timeup {
+  background: #dcfce7;
+  border-bottom-color: #86efac;
+  color: #14532d;
+}
+
+.countdown-banner-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.countdown-banner-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.countdown-timeup-text {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.countdown-calendar-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* "Leave early? Start now" — plain text link inside the banner */
+.countdown-leave-early-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  text-decoration: underline;
+  -webkit-tap-highlight-color: transparent;
+}
+.countdown-leave-early-btn:hover { opacity: 1; }
+
+@media (prefers-color-scheme: dark) {
+  .countdown-banner {
+    background: rgba(113, 63, 18, 0.3);
+    border-bottom-color: rgba(253, 224, 71, 0.25);
+    color: #fde68a;
+  }
+  .countdown-banner-timeup {
+    background: rgba(20, 83, 45, 0.35);
+    border-bottom-color: rgba(134, 239, 172, 0.25);
+    color: #86efac;
+  }
+}
+
+/* ================================================================
+   ShareLink — calendar export section
+   Appears below the Share / Copy Code buttons when the meetup
+   has a scheduled time.
+   ================================================================ */
+.share-calendar-export {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.share-calendar-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.share-calendar-helper {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-2);
+  font-style: italic;
+  line-height: 1.4;
+}

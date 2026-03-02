@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "sessions": {
+      ".read": false,
+      ".write": false,
+      "$sessionId": {
+        ".read": true,
+        ".write": true,
+        "participants": {
+          "$participantId": {
+            "status": {
+              ".validate": "newData.val() === null || newData.val().matches(/^(not-started|en-route|almost-there|paused|arrived|spectating)$/)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
