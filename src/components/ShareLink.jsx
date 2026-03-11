@@ -45,7 +45,27 @@ export async function triggerShare(sessionId, meetupName, destination, showToast
 }
 
 
-export default function ShareLink({ sessionId, nickname, session }) {
+/**
+ * Build a one-line RSVP summary from participants array.
+ * @param {Array} participants - [[id, participant], ...]
+ * @returns {string|undefined} e.g. "5 going, 2 maybe, 1 can't go"
+ */
+function buildRsvpSummary(participants) {
+  if (!participants || !participants.length) return undefined;
+  let going = 0, maybe = 0, cantGo = 0;
+  for (const [, p] of participants) {
+    const r = p.rsvpStatus ?? 'going';
+    if (r === 'going')        going += 1 + (p.plusOnes ?? 0);
+    else if (r === 'maybe')   maybe++;
+    else if (r === 'cant-go') cantGo++;
+  }
+  const parts = [`${going} going`];
+  if (maybe > 0)  parts.push(`${maybe} maybe`);
+  if (cantGo > 0) parts.push(`${cantGo} can't go`);
+  return parts.join(', ');
+}
+
+export default function ShareLink({ sessionId, nickname, session, participants }) {
   const { toast, showToast } = useToast();
 
   const url = `${window.location.origin}/session/${sessionId}`;
@@ -88,6 +108,7 @@ export default function ShareLink({ sessionId, nickname, session }) {
 
   // ---- Calendar export (scheduled meetups) ----
   const scheduledTime = session?.scheduledTime;
+  const rsvpSummary = buildRsvpSummary(participants);
   const calendarParams = scheduledTime ? {
     title: nickname
       ? `${nickname} — Almost There`
@@ -95,6 +116,7 @@ export default function ShareLink({ sessionId, nickname, session }) {
     startTime: scheduledTime,
     location: session?.destination?.address || session?.destination?.name,
     description: session?.notes || undefined,
+    rsvpSummary,
     sessionURL: url,
   } : null;
 

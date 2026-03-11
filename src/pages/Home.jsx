@@ -36,6 +36,16 @@ export default function Home() {
     navigate('/create', { state: { prefillDestination: destination } });
   }
 
+  // Navigate to Create with all cloneable fields pre-filled (hosted sessions only).
+  function handleClone(entry) {
+    navigate('/create', { state: { cloneFrom: {
+      destination:  entry.destination,
+      nickname:     entry.nickname     ?? null,
+      theme:        entry.theme        ?? null,
+      logistics:    entry.logistics    ?? null,
+    }}});
+  }
+
   function handleOpen(sessionId) {
     navigate(`/session/${sessionId}`);
   }
@@ -121,13 +131,23 @@ export default function Home() {
                     </span>
                   </div>
                   {state === 'expired' ? (
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => handleStartAgain(entry.destination)}
-                      aria-label={`Start again at ${entry.destination?.name || 'this destination'}`}
-                    >
-                      Start again
-                    </button>
+                    entry.wasHost ? (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleClone(entry)}
+                        aria-label={`Clone meetup at ${entry.destination?.name || 'this destination'}`}
+                      >
+                        Clone
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleStartAgain(entry.destination)}
+                        aria-label={`Start again at ${entry.destination?.name || 'this destination'}`}
+                      >
+                        Start again
+                      </button>
+                    )
                   ) : (
                     <button
                       className="btn btn-secondary btn-sm"

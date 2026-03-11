@@ -33,6 +33,9 @@
   --shadow-s: 0 2px 8px  rgba(0, 0, 0, 0.18);
   --shadow-m: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-l: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Theme accent */
+  --theme-primary:     #0066cc;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,6 +62,21 @@
     --shadow-m: 0 4px 16px rgba(0, 0, 0, 0.40);
     --shadow-l: 0 8px 24px rgba(0, 0, 0, 0.40);
   }
+}
+
+/* ================================================================
+   Utility Classes
+   ================================================================ */
+
+.glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.hero-emoji-aura {
+  box-shadow: 0 0 40px rgba(37, 99, 235, 0.25);
 }
 
 /* ================================================================
@@ -140,9 +158,11 @@ body {
 .btn-danger { background: #fee2e2; color: #dc2626; }
 .btn-danger:hover:not(:disabled) { background: #fecaca; }
 
-/* Success button — "I'm Leaving Now" */
-.btn-success { background: #16a34a; color: #fff; }
-.btn-success:hover:not(:disabled) { background: #15803d; }
+/* Success button — "I'm Leaving Now". Uses theme-primary so the color
+   follows the host's chosen accent. Text color is set inline via
+   getContrastTextColor() in Session.jsx. */
+.btn-success { background: var(--theme-primary); color: #fff; }
+.btn-success:hover:not(:disabled) { filter: brightness(0.88); }
 
 /* ================================================================
    Inputs
@@ -263,19 +283,14 @@ body {
 .create {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  position: relative;
-  overflow: hidden;
+  min-height: 100dvh;
+  background: var(--bg);
 }
 
 .create-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
   padding: 16px;
-  pointer-events: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .search-input {
@@ -291,8 +306,8 @@ body {
   color: var(--text-1);
   min-height: 48px;
   box-shadow: var(--shadow-m);
-  pointer-events: auto;
   transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 .search-input:focus { border-color: var(--accent); }
 .search-input::placeholder { color: var(--text-3); }
@@ -340,27 +355,94 @@ body {
 }
 
 .create-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  padding: 16px 16px 28px;
-  background: var(--surface-over);
-  backdrop-filter: blur(8px);
+  flex: 1;
+  padding: 16px 16px env(safe-area-inset-bottom, 16px);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border-top: 1px solid var(--border);
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
-.destination-label {
-  font-size: 14px;
-  color: var(--text-4);
-  font-weight: 500;
+/* Destination preview card — shown when user selects a place */
+.destination-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: var(--shadow-s);
+}
+
+.destination-preview-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.destination-preview-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.destination-preview-address {
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Stops / Waypoints (Create page) ── */
+.stops-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.stop-row { display: flex; align-items: center; gap: 8px; }
+.stop-number {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.stop-input {
+  flex: 1; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg-2);
+  color: var(--text-1); font-size: 14px;
+}
+.stop-remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); padding: 4px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.stop-remove:hover { color: var(--text-1); }
+.stops-add { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+
+/* ── Stop markers (map) ── */
+.stop-marker {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent, #0066CC); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.stop-marker-number { line-height: 1; }
+.stop-marker-label {
+  position: absolute; top: -22px; left: 50%;
+  transform: translateX(-50%); white-space: nowrap;
+  font-size: 10px; font-weight: 600;
+  background: rgba(0,0,0,0.7); color: #fff;
+  padding: 2px 6px; border-radius: 4px;
 }
 
 /* ================================================================
@@ -369,6 +451,7 @@ body {
 .session {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: 100dvh;
   overflow: hidden;
 }
@@ -381,9 +464,8 @@ body {
   z-index: 200;
   display: flex;
   align-items: center;
-  background: var(--surface-head);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
 }
 
 /* Inner wrapper: single-row layout, capped at 1200px on ultra-wide monitors */
@@ -477,6 +559,25 @@ body {
 }
 .session-dest-address-bounce { animation: addr-bounce 220ms ease-out; }
 
+/* Participant join count — small muted line below address in header */
+.session-join-count {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-header-note {
+  font-size: 12px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
 /* Flex body below header: map + panel side-by-side on desktop */
 .session-body {
   flex: 1;
@@ -490,9 +591,10 @@ body {
 /* Map area: fills all remaining space, contains all overlays */
 .session-map-wrap {
   flex: 1;
-  min-height: 0;
+  min-height: 40vh;
   position: relative;
   overflow: hidden;
+  transition: height 0.3s ease;
 }
 
 /* Desktop sidebar layout — map + ETA panel side-by-side */
@@ -525,55 +627,16 @@ body {
     border-radius: 0 !important;
   }
 
-  /* Tab pane scrolls freely on desktop */
-  .eta-tab-pane {
+  /* Scroll body scrolls freely on desktop */
+  .eta-scroll-body {
     overflow-y: auto !important;
   }
 
-  /* Recenter button: no panel-height offset needed on desktop */
-  .recenter-btn { bottom: 16px !important; }
-
-  /* Floating controls always visible on desktop (no full-snap hiding) */
-  .notes-reopen-btn { bottom: 16px !important; }
+  /* Recenter button: top-right positioning is already correct on desktop */
+  .recenter-btn { top: 16px !important; }
 
   /* Start-trip bar: flat bottom edge within map column */
   .start-trip-bar { border-radius: 0; }
-
-  /* Notes auto-collapse has no effect on desktop (banner always shown) */
-  .notes-banner-auto-collapsed {
-    max-height: 200px !important;
-    opacity: 1 !important;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-    border-bottom-width: 1px !important;
-    pointer-events: auto !important;
-  }
-
-  /* Notes info button irrelevant on desktop */
-  .notes-info-btn { display: none !important; }
-}
-
-
-/* ---- Notes info button (shown when banner auto-collapses on mobile) ---- */
-.notes-info-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1.5px solid #bfdbfe;
-  background: var(--accent-tint);
-  color: var(--accent);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.notes-info-btn:hover { background: #dbeafe; }
-@media (prefers-color-scheme: dark) {
-  .notes-info-btn { border-color: rgba(59, 130, 246, 0.4); color: #93c5fd; }
-  .notes-info-btn:hover { background: rgba(59, 130, 246, 0.25); }
 }
 
 /* ---- Nav tip banner ---- */
@@ -695,8 +758,7 @@ body {
   left: 0;
   right: 0;
   z-index: 110;
-  background: var(--surface-over);
-  backdrop-filter: blur(8px);
+  background: var(--surface);
   border-top: 1px solid var(--border);
   border-radius: 16px 16px 0 0;
   padding: 16px 16px max(24px, env(safe-area-inset-bottom, 24px));
@@ -738,13 +800,14 @@ body {
 .mode-btn:active { transform: scale(0.95); }
 
 .mode-btn-selected {
-  border-color: var(--accent);
-  background: var(--accent-tint);
+  border-color: var(--theme-primary);
+  background: var(--theme-primary);
 }
 
 .mode-icon  { font-size: 22px; line-height: 1; }
 .mode-label { font-size: 11px; font-weight: 600; color: var(--text-2); }
-.mode-btn-selected .mode-label { color: var(--accent); }
+/* Label inherits contrast color set inline by JS when the pill is selected */
+.mode-btn-selected .mode-label { color: inherit; }
 
 /* ================================================================
    ETA Panel — 3-point snap sheet (mobile) / fixed sidebar (desktop)
@@ -758,151 +821,203 @@ body {
   left: 0;
   right: 0;
   z-index: 100;
-  background: var(--surface-over);
-  backdrop-filter: blur(8px);
+  background: var(--surface);
   border-top: 1px solid var(--border);
   border-radius: 20px 20px 0 0;
   height: 85vh;
-  /* Initial collapsed position — JS overrides this immediately on mount */
-  transform: translateY(calc(85vh - 80px));
+  /* Initial peek position — JS overrides this immediately on mount */
+  transform: translateY(calc(85vh - 160px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   will-change: transform;
 }
 
-/* ---- Pinned drag area: handle + summary + tab bar ---- */
+/* ---- Pinned drag area: peek header + progress timeline ---- */
 /* position: sticky keeps it visible when scrolling in sidebar mode */
 .eta-pinned-area {
   flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--surface-over);
-  backdrop-filter: blur(8px);
+  background: var(--surface);
   touch-action: none;   /* critical: prevents browser stealing vertical drags */
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 16px 0;
+  padding: 10px 16px 12px;
   border-radius: 20px 20px 0 0;
 }
 
-/* Visual drag pill — wider + higher contrast than before */
+/* Visual drag pill — decorative only; entire peek area is the drag target */
 .eta-handle-pill {
-  width: 60px;
-  height: 5px;
+  width: 40px;
+  height: 4px;
   border-radius: 3px;
   background: var(--text-3);
-  opacity: 0.6;
-  margin-bottom: 10px;
+  opacity: 0.45;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
 
-/* Summary row */
-.eta-summary {
+/* ---- Peek header ---- */
+.eta-peek-header {
   width: 100%;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 10px;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
 }
 
-.eta-summary-text {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
+.eta-peek-status-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eta-peek-status {
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ---- Tab bar ---- */
-.eta-tab-bar {
-  display: flex;
-  width: 100%;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.eta-tab-btn {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 4px;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -1px;   /* overlap parent border-bottom */
-  font-family: inherit;
+  min-width: 0;
+}
+
+.eta-peek-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.eta-peek-next {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.eta-tab-btn-active {
-  font-weight: 600;
   color: var(--accent);
-  border-bottom-color: var(--accent);
+  margin-top: 1px;
 }
 
-/* Unread badge on Activity tab */
-.eta-tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  margin-left: 6px;
-}
-
-/* ---- Tab content wrapper ---- */
-/* Both panes are always mounted — active is relative, inactive is
-   absolutely positioned with visibility:hidden so scroll is preserved.  */
-.eta-tab-content-wrapper {
-  flex: 1;
+/* ---- Progress timeline ---- */
+.eta-progress-timeline {
+  width: 100%;
   position: relative;
-  min-height: 0;
-  overflow: hidden;  /* clips absolutely-positioned hidden pane */
+  height: 44px;
+  margin-top: 4px;
 }
 
-/* Active pane */
-.eta-tab-pane {
-  position: relative;
-  height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+.eta-progress-line {
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  right: 24px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.eta-progress-dot {
+  position: absolute;
+  top: 0;
   display: flex;
   flex-direction: column;
-  /* Safe-area padding so last card isn't behind the iOS home indicator */
+  align-items: center;
+  transform: translateX(-50%);
+}
+
+.eta-progress-dot-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.eta-progress-dot-arrived {
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 0 6px rgba(34,197,94,.35);
+}
+
+.eta-progress-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-3);
+  white-space: nowrap;
+  margin-top: 2px;
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eta-progress-dest {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.eta-progress-dest span:first-child {
+  font-size: 18px;
+  line-height: 20px;
+}
+
+.eta-progress-dest span:last-child {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ---- Scrollable body (replaces tab system) ---- */
+.eta-scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 20px));
 }
 
-/* Inactive pane — kept in layout tree to preserve scrollTop */
-.eta-tab-pane-hidden {
-  position: absolute;
-  top: 0;
-  left: 0;
+/* ---- Collapsible sections (Event Details, Activity) ---- */
+.eta-section-collapse {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.eta-section-collapse-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  height: 100%;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  min-height: 44px;
+  padding: 0 16px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.eta-section-collapse-header:active {
+  background: var(--bg-hover);
+}
+
+.eta-section-collapse-body {
+  padding: 0 0 8px;
 }
 
 /* Empty state in Activity tab */
@@ -1010,6 +1125,98 @@ body {
   vertical-align: middle;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.eta-cohost-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(124, 58, 237, 0.15);
+  color: #7C3AED;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.eta-plus-ones {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  margin-left: 4px;
+  background: rgba(0, 102, 204, 0.12);
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* RSVP badges */
+.rsvp-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.rsvp-badge-maybe  { background: rgba(217, 119, 6, 0.15); color: #d97706; }
+.rsvp-badge-cant-go { background: rgba(148, 163, 184, 0.2); color: var(--text-3); }
+
+.eta-rsvp-summary {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* Hidden mode chip — shown at top of People tab when current user is hidden */
+.eta-hidden-mode-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 12px 4px;
+  padding: 7px 10px;
+  background: var(--surface-2, rgba(100, 116, 139, 0.1));
+  border: 1px solid var(--border-subtle, rgba(100, 116, 139, 0.2));
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.eta-hidden-mode-go-visible {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--text-3);
+  border-radius: 9999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.eta-hidden-mode-go-visible:hover { background: var(--border-subtle); }
+
+/* Hidden participant badge — shown in host/co-host view */
+.eta-hidden-badge {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-3, #888);
+  margin-left: 4px;
+  flex-shrink: 0;
+  opacity: 0.75;
 }
 
 .eta-r1-mode      { font-size: 14px; line-height: 1; flex-shrink: 0; }
@@ -1168,45 +1375,41 @@ body {
   margin-top: 2px;
 }
 
-/* Base 36px circular icon button */
+/* Base 44px circular icon button — transparent background, tap feedback only */
 .eta-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
   border-radius: 50%;
   border: none;
-  background: var(--border-subtle);
+  background: transparent;
   color: var(--text-2);
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.12s, color 0.12s, transform 0.1s;
+  transition: background 0.15s ease, color 0.12s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
 }
-.eta-icon-btn:hover  { filter: brightness(1.1); }
-.eta-icon-btn:active { transform: scale(0.88); }
+.eta-icon-btn:hover { background: rgba(255, 255, 255, 0.06); }
+.eta-icon-btn:active,
+.eta-icon-btn:focus-visible { background: rgba(255, 255, 255, 0.1); transform: scale(0.92); }
 .eta-icon-btn:disabled {
   opacity: 0.38;
   cursor: default;
   pointer-events: none;
 }
 
-/* Tinted icon button variants */
-.eta-icon-btn-pause    { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
-.eta-icon-btn-resume   { background: rgba(22, 163, 74, 0.12); color: #16a34a; }
-.eta-icon-btn-bump     { background: rgba(217, 119, 6, 0.12); color: #d97706; }
+/* Tinted icon button variants — color only, no filled circle */
+.eta-icon-btn-pause    { color: #ef4444; }
+.eta-icon-btn-resume   { color: #16a34a; }
+.eta-icon-btn-bump     { color: #d97706; }
 .eta-icon-btn-overflow { font-size: 12px; letter-spacing: 1px; font-weight: 700; }
 /* Active state — emoji picker is open */
 .eta-icon-btn-active   { background: var(--accent-tint); color: var(--accent); }
-
-@media (prefers-color-scheme: dark) {
-  .eta-icon-btn-pause  { background: rgba(239, 68, 68, 0.20); }
-  .eta-icon-btn-resume { background: rgba(22, 163, 74, 0.20); }
-  .eta-icon-btn-bump   { background: rgba(217, 119, 6, 0.20); }
-}
 
 /* ── Emoji strip (inline below Row 4, horizontally scrollable) ── */
 .eta-emoji-strip {
@@ -1489,13 +1692,12 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 /* Status emoji badge — floats below the dot on the map marker */
@@ -1515,6 +1717,9 @@ body {
   justify-content: center;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   pointer-events: none;
+  /* Prevent grayscale/opacity inheritance from stale/paused parent */
+  filter: none !important;
+  opacity: 1 !important;
 }
 
 /* Stale: dashed border to signal paused location */
@@ -1551,9 +1756,19 @@ body {
   color: #fff;
 }
 
-/* Arrived: green ring via box-shadow (keeps white border intact) */
+/* Arrived: green ring via box-shadow */
 .p-marker-dot-arrived {
-  box-shadow: 0 0 0 3px #16a34a, 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 3px #16a34a;
+}
+
+/* Avatar mode: no colored circle background.
+   Radial-gradient provides a barely-visible white halo for contrast on light map tiles
+   (prevents white-heavy emojis like 👻 and 🐼 from disappearing).
+   !important overrides any inline background that may have been left from the old path. */
+.p-marker-dot-avatar {
+  background: radial-gradient(circle, rgba(255,255,255,0.7) 0%, transparent 60%) !important;
+  border: none !important;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
 }
 
 /* First letter of participant's name */
@@ -1601,11 +1816,11 @@ body {
 /* ================================================================
    Re-center button
    ================================================================ */
-/* Tracks --panel-height CSS var so it always sits 16px above the panel.
-   --panel-height defaults to 80px (collapsed) and updates on every snap. */
+/* Positioned top-right of the map area (below the session header, which is a
+   normal-flow flex item above session-map-wrap). No panel-height offset needed. */
 .recenter-btn {
   position: absolute;
-  bottom: calc(var(--panel-height, 80px) + 16px);
+  top: 16px;
   right: 16px;
   z-index: 90;
   width: 44px;
@@ -1619,19 +1834,12 @@ body {
   align-items: center;
   justify-content: center;
   color: var(--text-1);
-  transition: box-shadow 0.15s, transform 0.1s, opacity 200ms ease, bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.15s, transform 0.1s, opacity 200ms ease;
   opacity: 1;
   pointer-events: auto;
 }
 .recenter-btn:hover  { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); }
 .recenter-btn:active { transform: scale(0.93); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15); }
-
-/* Hide floating controls when panel is fully expanded */
-.panel-at-full .recenter-btn,
-.panel-at-full .notes-reopen-btn {
-  opacity: 0;
-  pointer-events: none;
-}
 
 /* ── Pre-trip location acquiring overlay ──────────────────────────────────── */
 .pre-trip-locating-overlay {
@@ -1729,10 +1937,11 @@ body {
   line-height: 1.4;
 }
 
+/* Celebration banner uses theme-primary so it matches the session color.
+   Text color is set inline via getContrastTextColor() in Session.jsx. */
 .celebration-banner {
-  background: #dcfce7;
-  border-bottom: 1px solid #bbf7d0;
-  color: #14532d;
+  background: var(--theme-primary);
+  border-bottom: 1px solid var(--accent);
   font-weight: 600;
   font-size: 15px;
   animation: slide-down 0.3s ease;
@@ -1753,155 +1962,6 @@ body {
   background: #fff7ed;
   border-bottom: 1px solid #fed7aa;
   color: #9a3412;
-}
-
-/* ---- Notes banner (group note set by host) ---- */
-.notes-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--accent-tint);
-  border-bottom: 1px solid #bfdbfe;
-  font-size: 13px;
-  color: var(--accent);
-  animation: banner-fade-in 0.2s ease;
-  /* Auto-collapse transition properties */
-  overflow: hidden;
-  max-height: 200px;
-  transition: max-height 0.35s ease, opacity 0.25s ease,
-              padding-top 0.35s ease, padding-bottom 0.35s ease,
-              border-bottom-width 0.35s ease;
-}
-
-/* Collapsed state on mobile — reversed by desktop media query above */
-.notes-banner-auto-collapsed {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-bottom-width: 0;
-  pointer-events: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .notes-banner { border-bottom-color: rgba(59, 130, 246, 0.3); }
-}
-
-.notes-banner-icon { flex-shrink: 0; font-size: 15px; }
-
-.notes-banner-text {
-  flex: 1;
-  line-height: 1.45;
-  word-break: break-word;
-  color: var(--text-1);
-}
-
-.notes-banner-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.notes-banner-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  color: var(--text-2);
-  border-radius: 6px;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.notes-banner-btn:hover { background: rgba(0, 0, 0, 0.06); }
-
-/* Edit button: larger tap target + SVG icon sizing */
-.notes-banner-btn-edit {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0;
-  color: var(--text-2);
-}
-.notes-banner-btn-edit svg {
-  pointer-events: none;
-}
-
-/* Edit mode inside the banner */
-.notes-edit-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.notes-edit-textarea {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1.5px solid var(--accent);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-1);
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  resize: none;
-  box-sizing: border-box;
-}
-.notes-edit-textarea:focus { outline: none; }
-
-.notes-edit-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.notes-edit-counter { font-size: 11px; color: var(--text-3); }
-.notes-edit-counter-warn { color: #ef4444; }
-
-.notes-edit-actions { display: flex; gap: 6px; }
-
-/* Floating re-open button (shown after notes banner is dismissed)
-   Tracks --panel-height so it sits above the panel alongside RecenterButton. */
-.notes-reopen-btn {
-  position: absolute;
-  bottom: calc(var(--panel-height, 80px) + 68px); /* offset above recenter-btn */
-  right: 16px;
-  z-index: 90;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1.5px solid #bfdbfe;
-  background: var(--accent-tint);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--shadow-s);
-  transition: background 0.15s, opacity 200ms ease, bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 1;
-  pointer-events: auto;
-  -webkit-tap-highlight-color: transparent;
-}
-.notes-reopen-btn:hover { background: #dbeafe; }
-
-@media (prefers-color-scheme: dark) {
-  .notes-reopen-btn {
-    border-color: rgba(59, 130, 246, 0.4);
-    color: #93c5fd;
-  }
-  .notes-reopen-btn:hover { background: rgba(59, 130, 246, 0.25); }
 }
 
 /* ================================================================
@@ -1940,14 +2000,19 @@ body {
   z-index: 100;
   padding: 16px;
   padding-bottom: env(safe-area-inset-bottom, 16px);
+  overflow-y: auto;
 }
 
 .prompt-card {
   background: var(--surface);
-  border-radius: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 28px 24px;
   width: 100%;
   max-width: 440px;
+  max-height: 85vh;
+  max-height: 85dvh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1977,6 +2042,75 @@ body {
   margin-top: 4px;
 }
 .prompt-actions .btn { flex: 1; }
+
+/* ── Avatar picker ── */
+.avatar-picker {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 8px; margin: 10px 0; padding: 8px;
+  background: var(--surface-2, rgba(100,116,139,0.07));
+  border-radius: 10px;
+}
+.avatar-picker-item {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid transparent; background: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; color: var(--text-2);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.avatar-picker-item:hover { transform: scale(1.1); }
+.avatar-picker-item-selected {
+  border-color: white; transform: scale(1.1);
+  background: transparent;
+}
+.avatar-picker-item svg { width: 32px; height: 32px; }
+.avatar-icon { display: inline-flex; align-items: center; justify-content: center; }
+.avatar-icon svg { width: 100%; height: 100%; }
+.p-marker-avatar { color: #fff; }
+
+/* Inline anonymous join — name input row with icon button */
+.join-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.join-name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.join-name-input.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.join-anon-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-secondary, #999);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.join-anon-btn.active {
+  background: rgba(var(--theme-primary-rgb, 0,102,204), 0.2);
+  color: var(--theme-primary, #0066CC);
+}
+
+.join-anon-hint {
+  font-size: 12px;
+  color: var(--text-secondary, #999);
+  margin: 4px 0 0 0;
+  min-height: 18px;
+}
 
 /* ================================================================
    Home — Recent Meetups
@@ -2267,6 +2401,7 @@ body {
   flex: 1;
   flex-shrink: 0;
   min-width: 72px;
+  min-height: 44px;
   background: rgba(255, 255, 255, 0.05);
   border: 1.5px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
@@ -2595,8 +2730,7 @@ body {
 .session-recap-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.80);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.85);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -2779,6 +2913,223 @@ body {
   white-space: nowrap;
 }
 
+/* Group stats row (Phase 4) */
+.session-recap-stats {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.session-recap-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--surface-2, rgba(0,0,0,0.04));
+  border-radius: 12px;
+  padding: 8px 14px;
+  min-width: 72px;
+}
+
+.session-recap-stat-value {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1.2;
+}
+
+.session-recap-stat-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* Highlight Memory section (Phase 4) */
+.session-recap-memory {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-recap-memory-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.session-recap-memory-textarea {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border, rgba(0,0,0,0.12));
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  background: var(--surface);
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+.session-recap-memory-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.session-recap-memory-save {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  align-self: flex-end;
+}
+
+.session-recap-memory-mine {
+  font-size: 13px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.session-recap-memory-mine-label {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.session-recap-memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.session-recap-memory-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.session-recap-memory-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-recap-memory-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.session-recap-memory-item-text {
+  font-size: 14px;
+  color: var(--text-1);
+  word-break: break-word;
+}
+
+.session-recap-memory-item-link {
+  font-size: 13px;
+  color: var(--accent);
+  word-break: break-all;
+  text-decoration: underline;
+}
+
+/* ── SessionRecap Social Edition extras (Phase 3, Step 3.4) ────── */
+
+/* Hero emoji — 64px, replaces flag icon for Social Edition sessions */
+.session-recap-hero-emoji {
+  font-size: 64px;
+  line-height: 1;
+  display: inline-block;
+  border-radius: 50%;
+  padding: 8px;
+}
+
+/* Generic wrapper for new recap sections (Event Details, Poll, Guest Summary) */
+.session-recap-section {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Collapsible toggle button for event details */
+.session-recap-details-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-primary, var(--accent));
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.session-recap-details-toggle:hover { opacity: 0.8; }
+
+/* Logistics rows inside the collapsible section */
+.session-recap-logistics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.session-recap-logistics-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+.session-recap-logistics-row > span:first-child {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.session-recap-registry-link {
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+  font-size: 13px;
+}
+
+/* Guest summary — status groups */
+.session-recap-guest-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.session-recap-guest-group:last-child { border-bottom: none; }
+
+.session-recap-guest-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.session-recap-guest-names {
+  font-size: 13px;
+  color: var(--text-1);
+  line-height: 1.5;
+}
+
 /* ================================================================
    Feature 5 — Firebase connection status banners
    Slim banners inside .session-banners (top of map area).
@@ -2835,6 +3186,36 @@ body {
 }
 
 /* ================================================================
+   Hidden mode banner — shown in active session when user is hidden
+   ================================================================ */
+.session-hidden-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+
+.session-hidden-mode-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.session-hidden-mode-toggle:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ================================================================
    Feature 5c — GPS signal lost indicator in ETA card
    ================================================================ */
 .eta-gps-lost {
@@ -2863,8 +3244,8 @@ body {
 
 /* Apply to header and panel — overrides the individual variables */
 .session-header  { background: var(--surface-primary); }
-.eta-panel       { background: var(--surface-primary); }
-.eta-pinned-area { background: var(--surface-primary); }
+.eta-panel       { background: var(--surface); border-radius: 20px 20px 0 0; }
+.eta-pinned-area { background: var(--surface); }
 
 /* ================================================================
    Plan 4.2 — Session activity feed
@@ -2939,9 +3320,10 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 10px 14px 10px 11px;
   background: #fef9c3;
   border-bottom: 1px solid #fde047;
+  border-left: 3px solid var(--theme-primary);
   font-size: 13px;
   color: #713f12;
   /* Smooth colour shift when countdown-banner-timeup class is added */
@@ -3033,3 +3415,1242 @@ body {
   font-style: italic;
   line-height: 1.4;
 }
+
+/* ================================================================
+   Lobby — Scheduled session view (Plan v5, Sections 5, 14)
+   Basic styling only. Theme engine (CSS variables, glassmorphism)
+   is applied in Phase 3.
+   ================================================================ */
+
+/* Root container: full-screen column, sticky bar anchors to bottom.
+   100vh is the fallback for browsers that don't support 100dvh.
+   100dvh accounts for collapsing mobile browser chrome (critical for
+   the sticky RSVP bar sitting correctly above iOS Safari's bottom bar). */
+.lobby {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  position: relative;
+  isolation: isolate;
+  font-family: var(--font-body);
+}
+
+/* Ghost-transition status banner */
+.lobby-transitioning {
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.35rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+/* Scrollable content area */
+.lobby-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  position: relative;
+  z-index: 1;
+  /* Bottom padding: sticky RSVP bar height + home indicator clearance */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+/* ---- Hero ---- */
+.lobby-hero {
+  text-align: center;
+  padding: 3rem 1.5rem 2rem;
+  position: relative;
+  z-index: 0;
+}
+
+/* Radial theme-colour glow behind the hero — creates the ambient light effect */
+.lobby-hero::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: var(--theme-primary);
+  opacity: 0.07;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Hero emoji: 80-120px circular container with aura (Section 14, Plan v5).
+   The glow uses .hero-emoji-aura which scales with the active theme. */
+.lobby-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  font-size: 4.5rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.lobby-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-1);
+  font-family: var(--font-heading);
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
+}
+
+.lobby-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
+.lobby-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ---- Generic section wrapper ---- */
+.lobby-section {
+  padding: 0 1rem 0.5rem;
+}
+
+.lobby-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  margin-bottom: 0.6rem;
+  padding-top: 0.5rem;
+  font-family: var(--font-heading);
+}
+
+/* ---- Guest list: horizontal avatar row ---- */
+.lobby-guests-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.75rem 0 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.lobby-guests-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Circular avatar with RSVP-status colour */
+.lobby-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  cursor: default;
+  user-select: none;
+}
+
+/* Headcount summary line */
+.lobby-headcount {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  flex-wrap: wrap;
+  padding-bottom: 0.5rem;
+}
+
+.lobby-headcount-going  { color: #16a34a; font-weight: 500; }
+.lobby-headcount-maybe  { color: #d97706; font-weight: 500; }
+.lobby-headcount-cantgo { color: var(--text-3); font-weight: 500; }
+.lobby-headcount-sep    { color: var(--text-3); }
+
+/* ---- Current user's RSVP status chip — glass ---- */
+.lobby-my-rsvp {
+  margin: 0 1rem 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-s);
+}
+
+.lobby-my-rsvp-label  { color: var(--text-2); }
+.lobby-my-rsvp-status { font-weight: 600; }
+
+.lobby-rsvp-going     { color: #16a34a; }
+.lobby-rsvp-maybe     { color: #d97706; }
+.lobby-rsvp-cant-go   { color: #dc2626; }
+
+.lobby-my-rsvp-plus {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  background: var(--border-subtle);
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+}
+
+/* ---- Hidden mode chip — shown when current user is in hidden mode ---- */
+.lobby-hidden-mode {
+  margin: 0 1rem 0.75rem;
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 0.8rem;
+  color: var(--text-2);
+  flex-wrap: wrap;
+}
+
+.lobby-hidden-mode-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.lobby-hidden-mode-toggle {
+  background: none;
+  border: 1px solid var(--text-3);
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.lobby-hidden-mode-toggle:hover { background: var(--border-subtle); }
+
+/* ---- Logistics cards ---- */
+.lobby-card {
+  margin: 0 1rem 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-s);
+}
+
+.lobby-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+
+.lobby-card-value {
+  color: var(--text-1);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* Registry link chip */
+.lobby-registry-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border);
+  color: var(--theme-primary);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.lobby-registry-chip:hover { opacity: 0.8; }
+
+/* ---- Emoji reactions on logistics cards ---- */
+.lobby-card-reactions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  min-height: 44px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.reaction-btn:active { transform: scale(0.9); }
+
+.reaction-btn-active {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: var(--theme-primary);
+}
+
+.reaction-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.reaction-btn-active .reaction-count { color: var(--theme-primary); }
+
+/* ---- Poll ---- */
+.lobby-poll { margin-top: 0; }
+
+.poll-question {
+  font-size: 0.975rem;
+  font-weight: 600;
+  color: var(--text-1);
+  margin: 0 0 0.3rem;
+}
+
+.poll-disclaimer {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin: 0 0 0.75rem;
+}
+
+.poll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+
+.poll-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  min-height: 44px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.poll-option:hover:not(:disabled) { border-color: var(--theme-primary); }
+.poll-option:disabled { cursor: default; }
+
+.poll-option-selected {
+  border-color: var(--theme-primary);
+  color: var(--theme-primary);
+}
+
+/* Fill bar — sits behind text via z-index, visible only after voting */
+.poll-option-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--theme-primary);
+  opacity: 0.1;
+  transition: width 0.35s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.poll-option-selected .poll-option-bar { opacity: 0.15; }
+
+.poll-option-text {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.poll-option-pct {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  font-weight: 600;
+  min-width: 2.5rem;
+  text-align: right;
+  position: relative;
+  z-index: 1;
+}
+
+.poll-option-selected .poll-option-pct { color: var(--theme-primary); }
+
+/* The check icon from MatIcon is inline — needs z-index too */
+.poll-option .mat-icon { position: relative; z-index: 1; }
+
+.poll-vote-count {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-align: right;
+  margin: 0.1rem 0 0;
+}
+
+/* ---- Activity feed — pill style (Section 13, Plan v5) ---- */
+.lobby-feed {
+  padding: 0.5rem 1rem 1rem;
+}
+
+.lobby-feed-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  margin-bottom: 0.4rem;
+  gap: 0.5rem;
+}
+
+.lobby-feed-entry:last-child { margin-bottom: 0; }
+
+.lobby-feed-text {
+  font-size: 0.875rem;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+.lobby-feed-time {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- Sticky RSVP action bar — glass (Section 13, Plan v5) ---- */
+.lobby-rsvp-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+
+.lobby-rsvp-btn {
+  width: 100%;
+  font-size: 1rem;
+  padding: 0.9rem;
+  /* Background + text color set via --theme-primary + inline luminance style in JSX */
+  background: var(--theme-primary);
+  border: none;
+  border-radius: 16px;
+}
+
+/* ---- RSVP modal: status selector ---- */
+.lobby-rsvp-options {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.lobby-rsvp-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0.25rem;
+  min-height: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  min-height: 44px;
+}
+
+.lobby-rsvp-option-selected {
+  border-color: var(--theme-primary);
+  color: var(--theme-primary);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ---- Plus-ones stepper ---- */
+.lobby-plusones {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0 0.75rem;
+}
+
+.lobby-plusones-label {
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
+.lobby-plusones-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lobby-stepper-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+  padding: 0;
+}
+
+.lobby-stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.lobby-plusones-val {
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 1.5rem;
+  text-align: center;
+  color: var(--text-1);
+}
+
+/* ---- Offline / Reconnecting banner (Plan v5, Section 18) ---- */
+/* Sits above the ghost-transition banner; only shown when Firebase
+   RTDB connection is lost. Styled as a muted warning stripe. */
+.lobby-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: rgba(234, 179, 8, 0.12);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.3);
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lobby-offline-banner {
+    background: rgba(234, 179, 8, 0.08);
+    color: #fcd34d;
+  }
+}
+
+/* Green pill shown for 2 s after Firebase reconnects. */
+.lobby-online-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: rgba(22, 163, 74, 0.12);
+  border-bottom: 1px solid rgba(22, 163, 74, 0.3);
+  color: #14532d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lobby-online-banner {
+    background: rgba(22, 163, 74, 0.1);
+    color: #86efac;
+  }
+}
+
+/* ---- Add to Calendar link (Plan v5, Section 14) ---- */
+/* Rendered as a small pill link below the scheduled time in lobby-meta. */
+.lobby-calendar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--theme-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  margin-top: 0.25rem;
+  transition: opacity 0.15s;
+}
+
+.lobby-calendar-link:hover { opacity: 0.75; }
+
+@media (prefers-color-scheme: dark) {
+  .lobby-calendar-link { background: rgba(255, 255, 255, 0.06); }
+}
+
+/* ---- "I reached" button — replaces the old "I'm Nearby" toggle ---- */
+.lobby-reached-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1.5px solid var(--theme-primary, #0066CC);
+  background: transparent;
+  color: var(--theme-primary, #0066CC);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s, color 0.15s;
+  margin: 0 1rem 0.75rem;
+}
+
+.lobby-reached-btn.active {
+  background: var(--theme-primary, #0066CC);
+  color: #fff;
+}
+
+/* ---- Reached badge on Avatar ---- */
+.lobby-avatar {
+  position: relative; /* ensure badges are positioned inside the circle */
+}
+
+.lobby-avatar-reached-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ---- Lobby back / close button ---- */
+.lobby-back-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  color: var(--text-2);
+}
+
+.lobby-back-btn:hover { background: #fff; }
+
+@media (prefers-color-scheme: dark) {
+  .lobby-back-btn {
+    background: rgba(30, 41, 59, 0.9);
+    color: var(--text-1);
+  }
+  .lobby-back-btn:hover { background: rgba(30, 41, 59, 1); }
+}
+
+/* ---- Share Invite button in Lobby ---- */
+.lobby-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ================================================================
+   Create — Event Details (Social Edition)
+   ================================================================ */
+
+/* Event details are part of the normal scroll flow (no max-height cap needed) */
+
+.create-event-details-wrap {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.create-event-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  width: 100%;
+  text-align: left;
+}
+.create-event-toggle:hover { opacity: 0.8; }
+
+.create-event-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-left: 2px;
+}
+
+.create-event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.create-section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+/* ── Theme picker ── */
+.theme-color-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.theme-swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  padding: 0;
+}
+/* Extend tap target to 44×44 without changing visual size */
+.theme-swatch::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+.theme-swatch:hover { transform: scale(1.1); }
+.theme-swatch-active { border-color: var(--text-1); }
+
+.theme-emoji-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.theme-emoji-btn {
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.theme-emoji-btn:hover { background: var(--border-subtle); }
+.theme-emoji-btn-active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.theme-style-row {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-style-btn {
+  flex: 1;
+  padding: 8px 0;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: none;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-weight: 500;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.theme-style-btn:hover { border-color: var(--text-3); }
+.theme-style-btn-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+
+/* ── Logistics ── */
+.logistics-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.logistics-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: none;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.logistics-toggle-btn:hover { border-color: var(--text-3); }
+.logistics-toggle-btn-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.logistics-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.logistics-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logistics-input-label {
+  font-size: 12px;
+  color: var(--text-2);
+  min-width: 68px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.logistics-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-1);
+  font-size: 13px;
+  min-width: 0;
+}
+.logistics-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ── Poll creator ── */
+.poll-question-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-1);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.poll-question-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.poll-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.poll-option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.poll-option-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-1);
+  font-size: 13px;
+  min-width: 0;
+}
+.poll-option-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.poll-option-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.poll-option-remove:hover { color: #dc2626; }
+
+.add-field-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  font-weight: 500;
+}
+.add-field-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+/* ================================================================
+   Lobby — Host actions (Nudge + Export)
+   ================================================================ */
+
+.lobby-host-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.lobby-host-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lobby-host-action-btn:hover { background: var(--border-subtle); border-color: var(--text-3); }
+.lobby-host-action-btn:active { transform: scale(0.97); }
+
+/* Removable avatar — button reset keeps the same look but adds pointer cursor */
+.lobby-avatar-removable {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.lobby-avatar-removable:hover { opacity: 0.75; transform: scale(0.95); }
+.lobby-avatar-removable:active { transform: scale(0.9); }
+
+/* Hidden avatar state — used by host/co-host viewing a hidden participant */
+.lobby-avatar-hidden {
+  position: relative;
+  opacity: 0.65;
+  outline: 2px dashed rgba(255, 255, 255, 0.5);
+  outline-offset: 1px;
+}
+/* Small dot badge indicating hidden status, anchored bottom-right of avatar */
+.lobby-avatar-hidden-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: #64748b;
+  border: 1.5px solid var(--bg-surface, #fff);
+  border-radius: 50%;
+}
+
+/* Reclaim Host link row */
+.lobby-reclaim-host {
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+}
+.lobby-reclaim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+.lobby-reclaim-btn:hover { background: var(--border-subtle); color: var(--text-2); }
+
+/* Reclaim success message */
+.reclaim-success {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #16a34a;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   EventDetails — Details tab pane inside ETAPanel
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Container: no extra padding — sections handle their own spacing */
+.event-details {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Hero ── */
+.event-details-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.event-details-emoji {
+  font-size: 48px;
+  line-height: 1;
+  display: block;
+}
+
+.event-details-nickname {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-1);
+  text-align: center;
+}
+
+/* ── Generic section ── */
+.event-details-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.event-details-section:last-child { border-bottom: none; }
+
+.event-details-section-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+/* ── Group note ── */
+.event-details-notes-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.event-details-notes-text {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-1);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.event-details-copy-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.event-details-copy-btn:hover { color: var(--text-1); border-color: var(--border); }
+
+/* ── Logistics cards ── */
+.event-details-logistics-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
+  color: var(--text-2);
+}
+
+.event-details-logistics-card:last-of-type { border-bottom: none; }
+
+.event-details-logistics-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.event-details-logistics-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+
+.event-details-logistics-value {
+  font-size: 0.9rem;
+  color: var(--text-1);
+  word-break: break-word;
+}
+
+.event-details-registry-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--theme-primary, var(--accent));
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.event-details-registry-link:hover { opacity: 0.75; }
+
+/* ── Poll results ── */
+/* Re-uses .poll-option / .poll-option-bar / .poll-option-pct from Lobby poll CSS */
+.event-details-poll-question {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-1);
+  margin: 0 0 8px;
+}
+
+/* ── Custom field responses ── */
+.event-details-cf-block {
+  margin-bottom: 10px;
+}
+
+.event-details-cf-block:last-child { margin-bottom: 0; }
+
+.event-details-cf-question {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.event-details-cf-answer {
+  margin: 0 0 2px;
+  font-size: 0.88rem;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+.event-details-cf-name {
+  font-weight: 600;
+}
+
+/* ── Headcount ── */
+.event-details-headcount {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-1);
+  line-height: 1.5;
+}
+
+.event-details-plusones {
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+
+/* ── Empty state ── */
+.event-details-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.event-details-empty p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+

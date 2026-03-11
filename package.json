@@ -7,7 +7,13 @@
     "dev": "vite --configLoader native",
     "build": "vite build --configLoader native",
     "lint": "eslint .",
-    "preview": "vite preview --configLoader native"
+    "preview": "vite preview --configLoader native",
+    "test": "node --test src/utils/normalizers.test.js",
+    "functions:install": "npm install --prefix functions",
+    "predeploy": "npm run build",
+    "deploy": "npm run predeploy && firebase deploy --only hosting",
+    "deploy:hosting": "npm run predeploy && firebase deploy --only hosting",
+    "deploy:functions": "npm install --prefix functions && firebase deploy --only functions"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",
@@ -25,6 +31,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }

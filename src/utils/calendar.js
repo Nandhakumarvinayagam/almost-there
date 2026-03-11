@@ -70,6 +70,7 @@ function foldLine(line) {
  * @param {number}  [params.endTime]      - End timestamp in ms; defaults to startTime + 1 hour
  * @param {string}  [params.location]     - Human-readable address or place name
  * @param {string}  [params.description]  - Optional session notes
+ * @param {string}  [params.rsvpSummary]  - RSVP summary (e.g. "5 going, 2 maybe")
  * @param {string}  [params.sessionURL]   - Session link appended to the description
  * @returns {string} Google Calendar template URL
  */
@@ -79,6 +80,7 @@ export function generateGoogleCalendarURL({
   endTime,
   location,
   description,
+  rsvpSummary,
   sessionURL,
 }) {
   const start = toUTCString(startTime);
@@ -93,9 +95,13 @@ export function generateGoogleCalendarURL({
 
   const base = `https://calendar.google.com/calendar/render?${params.toString()}`;
 
-  // Build description: optional notes + blank line + session link
+  // Build description: optional notes + RSVP summary + session link
   let desc = '';
   if (description) desc += description;
+  if (rsvpSummary) {
+    if (desc) desc += '\n\n';
+    desc += rsvpSummary;
+  }
   if (sessionURL) {
     if (desc) desc += '\n\n';
     desc += sessionURL;
@@ -125,6 +131,7 @@ export function generateGoogleCalendarURL({
  * @param {number}  [params.endTime]      - End timestamp in ms; defaults to startTime + 1 hour
  * @param {string}  [params.location]     - Human-readable address or place name
  * @param {string}  [params.description]  - Optional session notes
+ * @param {string}  [params.rsvpSummary]  - RSVP summary (e.g. "5 going, 2 maybe")
  * @param {string}  [params.sessionURL]   - Session link (written to URL property and appended
  *                                          to DESCRIPTION)
  * @returns {Blob} iCalendar blob with MIME type 'text/calendar;charset=utf-8'
@@ -135,6 +142,7 @@ export function generateICSBlob({
   endTime,
   location,
   description,
+  rsvpSummary,
   sessionURL,
 }) {
   const start  = toUTCString(startTime);
@@ -145,10 +153,11 @@ export function generateICSBlob({
   const sessionCode = sessionURL ? sessionURL.split('/').pop() : String(Date.now());
   const uid = `${startTime}-${sessionCode}@almost-there.app`;
 
-  // Build DESCRIPTION: optional notes + blank line + session link
+  // Build DESCRIPTION: optional notes + RSVP summary + session link
   const descParts = [];
-  if (description) descParts.push(description);
-  if (sessionURL)  descParts.push(sessionURL);
+  if (description)  descParts.push(description);
+  if (rsvpSummary)  descParts.push(rsvpSummary);
+  if (sessionURL)   descParts.push(sessionURL);
   const descValue = descParts.join('\n\n');
 
   const lines = [

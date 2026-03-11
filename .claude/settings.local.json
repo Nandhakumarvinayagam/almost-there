@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(node_modules/.bin/vite:*)",
+      "Bash(python3:*)",
+      "Bash(bun:*)",
+      "Bash(test:*)",
+      "Bash(ls:*)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(claude mcp add notebooklm npx notebooklm-mcp@latest)",
+      "mcp__notebooklm__setup_auth",
+      "mcp__notebooklm__get_health",
+      "Bash(pdftotext /Users/nandha.vinayagam/Downloads/Devin-for-Terminal-Technical-Ref-ServiceNow.pdf -)",
+      "Bash(python3 -c \":*)",
+      "Bash(devin --version)",
+      "WebSearch",
+      "WebFetch(domain:docs.devin.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:socket.dev)",
+      "WebFetch(domain:mcp.devin.ai)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:cognition.ai)",
+      "WebFetch(domain:app.devin.ai)"
+    ]
+  }
+}

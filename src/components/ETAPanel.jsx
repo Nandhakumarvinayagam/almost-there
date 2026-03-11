@@ -1,18 +1,9 @@
 /**
- * ETAPanel — collapsible half-sheet (mobile) / fixed sidebar (desktop).
+ * ETAPanel — DoorDash-inspired 2-state bottom sheet (mobile) / fixed sidebar (desktop).
  *
- * Card layout: strict 4-row grid per participant.
- *   Row 1 : [Avatar] [Name] [Ordinal pill]  ·····  [Mode icon] [ETA countdown]
- *   Row 2 : [Status label]  ···················  [~Arrival time] [·] [Distance]
- *   Row 3 : Warning pills (GPS lost / stale location) — only when relevant
- *   Row 4 : Icon-only action buttons — visibility rules per status & ownership
- *
- * Phase 3 additions:
- *  - Tabbed interface: People | Activity tabs (sticky pinned area)
- *  - 3-point snap: Collapsed (~80px) / Half (~40vh) / Full (~85vh)
- *  - Touch drag from pinned area always; from content area when not at Full
- *  - Scroll locking: content panes scroll only when sheet is at Full
- *  - Unread badge on Activity tab while on People tab
+ * 2-state snap: Peek (~160px, status + timeline) / Full (~85vh, all content).
+ * Single scrollable view — no tabs. Participant sections followed by
+ * collapsible Event Details and Recent Activity.
  *
  * Popovers (mode selector, bump options, overflow menus) are rendered via
  * React portals so they escape the panel's overflow clipping.
@@ -20,11 +11,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNow } from '../hooks/useNow';
 import { createPortal } from 'react-dom';
-import { onValue, ref, query, limitToLast } from 'firebase/database';
-import { db } from '../utils/firebase';
 import {
   STATUS, MAX_ETA_BUMPS, BUMP_OPTIONS_MINUTES, STATUS_EMOJIS, STALE_THRESHOLD,
-  EMOJI_TO_ICON, STATUS_ICONS,
 } from '../config/constants';
 import { getParticipantColor } from '../utils/participantColor';
 import { haversineDistance } from '../utils/geo';
@@ -32,19 +20,28 @@ import { haptic } from '../utils/haptic';
 import { copyToClipboard } from '../utils/clipboard';
 import { timeAgo } from '../utils/formatters';
 import MatIcon from './MatIcon';
+import ActivityFeed from './ActivityFeed';
+import EventDetails from './EventDetails';
+import { AvatarIcon } from './Avatars';
 
 const NUDGE_COOLDOWN_MS = 60_000;
 
-// Snap geometry constants
+// Snap geometry constants — 2-state: peek (status + timeline) and full
 const PANEL_TOTAL_VH = 0.85; // panel height = 85% of viewport
-const HALF_VH        = 0.40; // half snap = 40% of viewport visible
-const COLLAPSED_PX   = 80;   // collapsed: only 80px visible
+const PEEK_PX        = 160;  // peek: status header + progress timeline
 
 function getPanelTotalPx()   { return Math.round(window.innerHeight * PANEL_TOTAL_VH); }
 function getSnapVisiblePx(snap) {
-  if (snap === 'collapsed') return COLLAPSED_PX;
-  if (snap === 'half')      return Math.round(window.innerHeight * HALF_VH);
+  if (snap === 'peek') return PEEK_PX;
   return getPanelTotalPx(); // full
+}
+
+// RSVP badge — only rendered for maybe/can't-go (going is the default, no badge)
+function RsvpBadge({ rsvpStatus }) {
+  if (!rsvpStatus || rsvpStatus === 'going') return null;
+  const label = rsvpStatus === 'maybe' ? 'Maybe' : "Can't Go";
+  const cls = rsvpStatus === 'maybe' ? 'rsvp-badge-maybe' : 'rsvp-badge-cant-go';
+  return <span className={`rsvp-badge ${cls}`}>{label}</span>;
 }
 
 const SWITCH_MODE_OPTIONS = [
@@ -92,21 +89,77 @@ function PlayIcon() {
   );
 }
 
-// ─── Status icon helper ───────────────────────────────────────────────────────
+// ─── Status emoji helper ─────────────────────────────────────────────────────
+// Backward-compat: legacy data stored Material icon names (e.g. "coffee"),
+// newer data stores actual emoji chars (e.g. "☕"). Map old → new for display.
+const ICON_TO_EMOJI = { coffee: '☕', local_gas_station: '⛽', local_parking: '🅿️', traffic: '🚦', sprint: '🏃', shopping_cart: '🛒' };
+function resolveEmoji(statusEmoji) {
+  if (!statusEmoji) return null;
+  return ICON_TO_EMOJI[statusEmoji] || statusEmoji;
+}
 function StatusIcon({ statusEmoji, size = 16 }) {
-  const iconName = statusEmoji
-    ? (EMOJI_TO_ICON[statusEmoji] || statusEmoji)
-    : null;
-  if (!iconName || !STATUS_ICONS.includes(iconName)) return null;
-  return <MatIcon name={iconName} size={size} />;
+  const emoji = resolveEmoji(statusEmoji);
+  if (!emoji) return null;
+  return <span style={{ fontSize: size, lineHeight: 1 }}>{emoji}</span>;
+}
+
+// ─── Progress timeline (peek header) ──────────────────────────────────────────
+function ProgressTimeline({ enRoute = [], arrivedList = [], colorMap = {}, now }) {
+  const all = [...enRoute, ...arrivedList];
+  if (all.length === 0) return null;
+
+  // Compute max ETA for positioning
+  let maxEtaMs = 0;
+  for (const [, p] of enRoute) {
+    const ms = etaMs(p, now);
+    if (ms != null) {
+      const remaining = Math.max(0, ms - now);
+      if (remaining > maxEtaMs) maxEtaMs = remaining;
+    }
+  }
+  if (maxEtaMs === 0) maxEtaMs = 1; // avoid division by zero
+
+  return (
+    <div className="eta-progress-timeline">
+      <div className="eta-progress-line" />
+      {enRoute.map(([id, p]) => {
+        const ms = etaMs(p, now);
+        const remaining = ms != null ? Math.max(0, ms - now) : maxEtaMs;
+        const pct = Math.max(5, Math.min(90, (1 - remaining / maxEtaMs) * 90));
+        return (
+          <div key={id} className="eta-progress-dot" style={{ left: `${pct}%` }}>
+            <div className="eta-progress-dot-circle" style={{ background: colorMap[id] || '#94a3b8' }} />
+            <span className="eta-progress-label">{(p.name || '?').slice(0, 6)}</span>
+          </div>
+        );
+      })}
+      {arrivedList.map(([id, p]) => (
+        <div key={id} className="eta-progress-dot" style={{ left: '95%' }}>
+          <div className="eta-progress-dot-circle eta-progress-dot-arrived" style={{ background: colorMap[id] || '#94a3b8' }}>
+            <MatIcon name="check" size={8} />
+          </div>
+          <span className="eta-progress-label">{(p.name || '?').slice(0, 6)}</span>
+        </div>
+      ))}
+      <div className="eta-progress-dest">
+        <MatIcon name="location_on" size={16} />
+      </div>
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ETAPanel({
   sessionId,
+  session = null,
   participants,
   currentParticipantId,
   hostId = null,
+  isHost = false,
+  isViewerHostOrCoHost = false,
+  onPromoteCoHost = null,
+  onDemoteCoHost = null,
+  onToggleVisibility = () => {},
   destination,
   isSidebar = false,
   onPause,
@@ -126,59 +179,18 @@ export default function ETAPanel({
   // 1-second tick drives countdowns and close-race detection
   const now = useNow(1000);
 
-  // Activity feed — real-time event log (max 50 events)
-  const [events, setEvents] = useState([]);
-  useEffect(() => {
-    if (!sessionId) return;
-    const q = query(ref(db, `sessions/${sessionId}/events`), limitToLast(50));
-    const unsub = onValue(q, (snap) => {
-      const list = [];
-      snap.forEach((child) => {
-        list.push(child.val());
-      });
-      setEvents(list);
-    });
-    return () => unsub();
-  }, [sessionId]);
 
-  // ── Snap state (mobile only) ─────────────────────────────────────────────
-  const [snapPoint, setSnapPoint] = useState('collapsed');
-  const snapPointRef = useRef('collapsed');
+  // ── Snap state (mobile only) — 2-state: peek / full ─────────────────────
+  const [snapPoint, setSnapPoint] = useState('peek');
+  const snapPointRef = useRef('peek');
   function updateSnapPoint(snap) {
     snapPointRef.current = snap;
     setSnapPoint(snap);
   }
 
-  // ── Tab state ────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('people');
-  const activeTabRef = useRef('people');
-
-  // Unread badge: count new events that arrived while on People tab
-  const lastSeenCountRef    = useRef(0);
-  const hasInitEventsRef    = useRef(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (events.length === 0) return;
-    if (!hasInitEventsRef.current) {
-      // First load — mark all pre-existing events as seen
-      lastSeenCountRef.current = events.length;
-      hasInitEventsRef.current = true;
-      return;
-    }
-    if (activeTabRef.current !== 'people') return;
-    const newEvents = events.length - lastSeenCountRef.current;
-    if (newEvents > 0) setUnreadCount(newEvents);
-  }, [events.length]);
-
-  function handleTabChange(tab) {
-    setActiveTab(tab);
-    activeTabRef.current = tab;
-    if (tab === 'activity') {
-      lastSeenCountRef.current = events.length;
-      setUnreadCount(0);
-    }
-  }
+  // ── Collapsible sections in full view ─────────────────────────────────────
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   // ── Panel refs ────────────────────────────────────────────────────────────
   const panelRef = useRef(null);
@@ -200,15 +212,15 @@ export default function ETAPanel({
       onHeightChangeRef.current?.(h, false);
       return;
     }
-    // Mobile: set initial collapsed position (no animation)
-    const visible = COLLAPSED_PX;
+    // Mobile: set initial peek position (no animation)
+    const visible = PEEK_PX;
     const ty = getPanelTotalPx() - visible;
     if (panelRef.current) {
       panelRef.current.style.transition = 'none';
       panelRef.current.style.transform = `translateY(${ty}px)`;
     }
     document.documentElement.style.setProperty('--panel-height', `${visible}px`);
-    updateSnapPoint('collapsed');
+    updateSnapPoint('peek');
     onHeightChangeRef.current?.(visible, false);
   }, [isSidebar]);
 
@@ -226,13 +238,13 @@ export default function ETAPanel({
       if (e.target.closest('button, input, textarea, select, a')) return;
 
       const inPinned  = !!e.target.closest('.eta-pinned-area');
-      const inContent = !!e.target.closest('.eta-tab-content-wrapper');
+      const inContent = !!e.target.closest('.eta-scroll-body');
       // Content-area drag only when not at Full (scroll lock means no competing scroll)
       if (!inPinned && !(inContent && snapPointRef.current !== 'full')) return;
 
       const raw = panel.style.transform;
       const match = raw.match(/translateY\((\d+(?:\.\d+)?)px\)/);
-      const currentTY = match ? parseFloat(match[1]) : (getPanelTotalPx() - COLLAPSED_PX);
+      const currentTY = match ? parseFloat(match[1]) : (getPanelTotalPx() - PEEK_PX);
 
       dragStartY   = e.touches[0].clientY;
       dragStartVis = getPanelTotalPx() - currentTY;
@@ -244,7 +256,7 @@ export default function ETAPanel({
       if (!isDraggingRef.current) return;
       e.preventDefault();
       const dy         = e.touches[0].clientY - dragStartY;
-      const newVisible = Math.max(COLLAPSED_PX, Math.min(getPanelTotalPx(), dragStartVis - dy));
+      const newVisible = Math.max(PEEK_PX, Math.min(getPanelTotalPx(), dragStartVis - dy));
       panel.style.transform = `translateY(${getPanelTotalPx() - newVisible}px)`;
       // Update CSS var continuously so floating controls track in real-time
       document.documentElement.style.setProperty('--panel-height', `${newVisible}px`);
@@ -256,13 +268,12 @@ export default function ETAPanel({
 
       const raw = panel.style.transform;
       const match = raw.match(/translateY\((\d+(?:\.\d+)?)px\)/);
-      const currentTY  = match ? parseFloat(match[1]) : (getPanelTotalPx() - COLLAPSED_PX);
+      const currentTY  = match ? parseFloat(match[1]) : (getPanelTotalPx() - PEEK_PX);
       const currentVis = getPanelTotalPx() - currentTY;
 
       const snapOptions = [
-        { name: 'collapsed', visible: getSnapVisiblePx('collapsed') },
-        { name: 'half',      visible: getSnapVisiblePx('half') },
-        { name: 'full',      visible: getSnapVisiblePx('full') },
+        { name: 'peek', visible: getSnapVisiblePx('peek') },
+        { name: 'full', visible: getSnapVisiblePx('full') },
       ];
       const nearest = snapOptions.reduce((best, sp) =>
         Math.abs(currentVis - sp.visible) < Math.abs(currentVis - best.visible) ? sp : best
@@ -415,8 +426,7 @@ export default function ETAPanel({
   }
 
   function handleHeaderTap() {
-    // Collapsed → half (show participant list); half or full → collapse
-    snapToPoint(snapPoint === 'collapsed' ? 'half' : 'collapsed');
+    snapToPoint(snapPoint === 'peek' ? 'full' : 'peek');
   }
 
   // ── Guard ──────────────────────────────────────────────────────────────────
@@ -428,15 +438,33 @@ export default function ETAPanel({
   const arrivedList    = [];
   const waiting        = [];
   const spectatingList = [];
+  const notGoingList   = []; // maybe + can't-go (not sharing location)
 
   for (const entry of participants) {
-    const s = entry[1].status ?? STATUS.NOT_STARTED;
-    if      (s === STATUS.SPECTATING)  spectatingList.push(entry);
-    else if (s === STATUS.NOT_STARTED) waiting.push(entry);
-    else if (s === STATUS.ARRIVED)     arrivedList.push(entry);
-    else if (s === STATUS.PAUSED)      pausedList.push(entry);
-    else                               enRoute.push(entry);
+    const [, p] = entry;
+    const rsvp = p.rsvpStatus ?? 'going';
+    const s = p.status ?? STATUS.NOT_STARTED;
+    // Maybe / Can't-go with no trip started → show in Not Going section
+    if ((rsvp === 'maybe' || rsvp === 'cant-go') && s === STATUS.NOT_STARTED) {
+      notGoingList.push(entry);
+    } else if (s === STATUS.SPECTATING)  spectatingList.push(entry);
+    else if (s === STATUS.NOT_STARTED)   waiting.push(entry);
+    else if (s === STATUS.ARRIVED)       arrivedList.push(entry);
+    else if (s === STATUS.PAUSED)        pausedList.push(entry);
+    else                                 enRoute.push(entry);
   }
+
+  // ── RSVP summary ─────────────────────────────────────────────────────────
+  const rsvpCounts = useMemo(() => {
+    let going = 0, maybe = 0, cantGo = 0;
+    for (const [, p] of participants) {
+      const r = p.rsvpStatus ?? 'going';
+      if (r === 'going')   { going += 1 + (p.plusOnes ?? 0); }
+      else if (r === 'maybe')   maybe++;
+      else if (r === 'cant-go') cantGo++;
+    }
+    return { going, maybe, cantGo };
+  }, [participants]);
 
   enRoute.sort(([, a], [, b]) => {
     const aMs = etaMs(a, now), bMs = etaMs(b, now);
@@ -460,10 +488,28 @@ export default function ETAPanel({
   const hasArrived  = arrivedList.length > 0;
   const hasWaiting  = waiting.length > 0;
 
+  // Collapsed summary — "3 of 8 · Next arrives: 12 min" or "3 people · Next arrives: 12 min"
+  const nextArrivalMins = (() => {
+    let minMs = Infinity;
+    for (const [, p] of enRoute) {
+      const ms = etaMs(p, now);
+      if (ms != null && ms < minMs) minMs = ms;
+    }
+    if (minMs === Infinity) return null;
+    return Math.ceil(Math.max(0, minMs - now) / 60_000);
+  })();
+  const _expectedCount = session?.expectedCount ?? null;
+  const _count = participants.length;
+  const _countPart = _expectedCount
+    ? `${_count} of ${_expectedCount}`
+    : `${_count} ${_count === 1 ? 'person' : 'people'}`;
+  const _nextPart = nextArrivalMins != null
+    ? (nextArrivalMins <= 0 ? 'Arriving now' : `Next arrives: ${nextArrivalMins} min`)
+    : null;
   const isCooldownActive      = modeSwitchCooldownUntil > now;
   const cooldownSecsRemaining = isCooldownActive ? Math.ceil((modeSwitchCooldownUntil - now) / 1000) : 0;
 
-  // Summary text for collapsed/half views
+  // Summary text for peek header
   const summaryParts = [];
   if (enRoute.length)        summaryParts.push(`${enRoute.length} en route`);
   if (pausedList.length)     summaryParts.push(`${pausedList.length} paused`);
@@ -481,59 +527,42 @@ export default function ETAPanel({
     ? participants.find(([id]) => id === activePopover.participantId)?.[1]
     : null;
 
-  // Scroll lock: content panes scroll only when fully expanded or in sidebar
+  // Scroll lock: body scrolls only when fully expanded or in sidebar
   const contentOverflow = (snapPoint === 'full' || isSidebar) ? 'auto' : 'hidden';
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div ref={panelRef} className="eta-panel">
 
-      {/* ── Pinned drag area: handle + summary + tab bar ── */}
-      <div className="eta-pinned-area">
+      {/* ── Peek header: status + progress timeline ── */}
+      <div
+        className="eta-pinned-area"
+        onClick={!isSidebar ? handleHeaderTap : undefined}
+        style={!isSidebar ? { cursor: 'pointer' } : undefined}
+      >
         {!isSidebar && (
-          <div
-            className="eta-handle-pill"
-            aria-hidden="true"
-            onClick={handleHeaderTap}
-          />
+          <div className="eta-handle-pill" aria-hidden="true" />
         )}
 
-        <div
-          className="eta-summary"
-          onClick={!isSidebar ? handleHeaderTap : undefined}
-          onKeyDown={!isSidebar ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderTap(); } } : undefined}
-          tabIndex={!isSidebar ? 0 : undefined}
-          style={!isSidebar ? { cursor: 'pointer' } : undefined}
-          aria-label={!isSidebar ? (snapPoint === 'collapsed' ? 'Expand panel' : 'Collapse panel') : undefined}
-          role={!isSidebar ? 'button' : undefined}
-        >
-          <span className="eta-summary-text">{summaryText}</span>
+        <div className="eta-peek-header">
+          <div className="eta-peek-status-row">
+            <span className="eta-peek-status">{summaryText}</span>
+            <span className="eta-peek-count">
+              {_expectedCount ? `${_count}/${_expectedCount}` : `${_count} people`}
+            </span>
+          </div>
+          {_nextPart && (
+            <div className="eta-peek-next">{_nextPart}</div>
+          )}
         </div>
 
-        {/* Tab bar */}
-        <div className="eta-tab-bar" role="tablist">
-          <button
-            role="tab"
-            aria-selected={activeTab === 'people'}
-            className={`eta-tab-btn${activeTab === 'people' ? ' eta-tab-btn-active' : ''}`}
-            onClick={() => handleTabChange('people')}
-          >
-            People
-          </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'activity'}
-            className={`eta-tab-btn${activeTab === 'activity' ? ' eta-tab-btn-active' : ''}`}
-            onClick={() => handleTabChange('activity')}
-          >
-            Activity
-            {unreadCount > 0 && (
-              <span className="eta-tab-badge" aria-label={`${unreadCount} new`}>
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Progress timeline — dots for each participant */}
+        <ProgressTimeline
+          enRoute={enRoute}
+          arrivedList={arrivedList}
+          colorMap={colorMap}
+          now={now}
+        />
       </div>
 
       {/* Panel-level feedback toast — above tab content, always visible */}
@@ -541,16 +570,24 @@ export default function ETAPanel({
         <div className="eta-panel-toast" role="status" aria-live="polite">{feedbackToast}</div>
       )}
 
-      {/* ── Tab content wrapper ── */}
-      <div className="eta-tab-content-wrapper">
+      {/* ── Single scrollable body ── */}
+      <div className="eta-scroll-body" style={{ overflowY: contentOverflow }}>
 
-        {/* ── People tab pane ── */}
-        <div
-          role="tabpanel"
-          aria-label="People"
-          className={activeTab === 'people' ? 'eta-tab-pane' : 'eta-tab-pane-hidden'}
-          style={{ overflowY: contentOverflow }}
-        >
+          {/* Hidden mode chip — shown when the current user is in hidden mode */}
+          {participants.find(([id]) => id === currentParticipantId)?.[1]?.visibility === 'hidden' && (
+            <div className="eta-hidden-mode-chip" role="status">
+              <MatIcon name="visibility_off" size={14} />
+              <span>You're in hidden mode</span>
+              <button
+                type="button"
+                className="eta-hidden-mode-go-visible"
+                onClick={() => onToggleVisibility('visible')}
+              >
+                Go visible
+              </button>
+            </div>
+          )}
+
           {/* Arrival order preview */}
           {arrivalPreviewName && (
             <div className="eta-arrival-preview" role="note">
@@ -564,16 +601,17 @@ export default function ETAPanel({
           )}
           {enRoute.map(([id, p], index) => {
             const isMe        = id === currentParticipantId;
+            const isAnon      = p.visibility === 'hidden' && !isMe && !isViewerHostOrCoHost;
             const almostThere = p.status === STATUS.ALMOST_THERE;
             const isCloseRace = closeRaceSet.has(index);
             const activeMode  = p.travelMode ?? 'DRIVING';
             const bumpCount   = p.bumpCount ?? 0;
             const manualDelay = p.manualDelayMs ?? 0;
             const atMaxBumps  = bumpCount >= MAX_ETA_BUMPS;
-            const pColor      = colorMap[id];
-            const isStale     = !!(p.lastUpdated && (now - p.lastUpdated) > STALE_THRESHOLD);
-            const etaMsVal    = etaMs(p, now);
-            const hasWarnings = (isMe && gpsLost) || isStale;
+            const pColor      = isAnon ? '#94a3b8' : colorMap[id];
+            const isStale     = !isAnon && !!(p.lastUpdated && (now - p.lastUpdated) > STALE_THRESHOLD);
+            const etaMsVal    = isAnon ? null : etaMs(p, now);
+            const hasWarnings = !isAnon && ((isMe && gpsLost) || isStale);
 
             return (
               <div
@@ -588,63 +626,74 @@ export default function ETAPanel({
                 <div className="eta-card-r1">
                   <div className="eta-card-r1-left">
                     <div className="eta-avatar" style={{ background: pColor }} aria-hidden="true">
-                      {p.name?.[0]?.toUpperCase() ?? '?'}
+                      {isAnon ? '?' : (p.avatarId != null ? <AvatarIcon avatarId={p.avatarId} size={20} /> : (p.name?.[0]?.toUpperCase() ?? '?'))}
                     </div>
                     <span className="eta-card-name">
-                      {p.name}{isMe ? ' (you)' : ''}<StatusIcon statusEmoji={p.statusEmoji} />
+                      {isAnon ? 'Anonymous Guest' : (p.name + (isMe ? ' (you)' : ''))}
+                      {!isAnon && <StatusIcon statusEmoji={p.statusEmoji} />}
                     </span>
-                    {id === hostId && <span className="eta-host-chip">Host</span>}
-                    {index < 3 && (
+                    {!isAnon && <RsvpBadge rsvpStatus={p.rsvpStatus} />}
+                    {!isAnon && p.plusOnes > 0 && <span className="eta-plus-ones">+{p.plusOnes}</span>}
+                    {!isAnon && p.visibility === 'hidden' && isViewerHostOrCoHost && (
+                      <span className="eta-hidden-badge" title="Hidden participant"><MatIcon name="visibility_off" size={12} /></span>
+                    )}
+                    {!isAnon && id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && id !== hostId && !!session?.permissions?.coHosts?.[id] && <span className="eta-cohost-chip">Co-Host</span>}
+                    {!isAnon && index < 3 && (
                       <span className="eta-ordinal-pill">{ordinal(index + 1)}</span>
                     )}
-                    {isCloseRace && (
+                    {!isAnon && isCloseRace && (
                       <span className="eta-close-race" aria-label="Close race"><MatIcon name="bolt" size={14} /></span>
                     )}
                   </div>
                   <div className="eta-card-r1-right">
-                    <span className="eta-r1-mode"><MatIcon name={getModeIconName(activeMode)} size={20} /></span>
-                    <span className="eta-r1-countdown">{smartCountdown(p, now)}</span>
+                    {!isAnon && <span className="eta-r1-mode"><MatIcon name={getModeIconName(activeMode)} size={20} /></span>}
+                    <span className={`eta-r1-countdown${isAnon ? ' eta-r1-muted' : ''}`}>
+                      {isAnon ? '—' : smartCountdown(p, now)}
+                    </span>
                   </div>
                 </div>
 
                 {/* Row 2 */}
-                <div className="eta-card-r2">
-                  <span className="eta-status-label">
-                    {almostThere ? (
-                      <><span className="eta-pulse-dot" aria-hidden="true" />Almost there!</>
-                    ) : p.travelMode === 'TRANSIT' && p.transitInfo ? (
-                      <><MatIcon name={getTransitIconName(p.transitInfo.vehicleType)} size={16} />{' '}{p.transitInfo.line ?? 'Transit'}</>
-                    ) : p.location ? 'En route' : 'Getting location…'}
-                  </span>
-                  <div className="eta-card-r2-right">
-                    {etaMsVal != null && (
-                      <>
-                        <span className="eta-arrival-time-label">
-                      {activeMode === 'TRANSIT' ? 'Scheduled ' : 'Arrives '}{formatArrivalTime(etaMsVal)}
+                {!isAnon && (
+                  <div className="eta-card-r2">
+                    <span className="eta-status-label">
+                      {almostThere ? (
+                        <><span className="eta-pulse-dot" aria-hidden="true" />Almost there!</>
+                      ) : p.travelMode === 'TRANSIT' && p.transitInfo ? (
+                        <><MatIcon name={getTransitIconName(p.transitInfo.vehicleType)} size={16} />{' '}{p.transitInfo.line ?? 'Transit'}</>
+                      ) : p.location ? 'En route' : 'Getting location…'}
                     </span>
-                        {p.routeDistance && (
-                          <>
-                            <span className="eta-dot-sep" aria-hidden="true">·</span>
-                            <span className="eta-dist-label">{p.routeDistance}</span>
-                          </>
-                        )}
-                      </>
-                    )}
-                    {manualDelay > 0 && (
-                      <span className="eta-delay-badge" title={`+${Math.round(manualDelay / 60_000)} min delay added`}>
-                        +{Math.round(manualDelay / 60_000)}m
+                    <div className="eta-card-r2-right">
+                      {etaMsVal != null && (
+                        <>
+                          <span className="eta-arrival-time-label">
+                        {activeMode === 'TRANSIT' ? 'Scheduled ' : 'Arrives '}{formatArrivalTime(etaMsVal)}
                       </span>
-                    )}
-                    {!isMe && (
-                      <button
-                        className="eta-overflow-btn"
-                        onClick={(e) => { e.stopPropagation(); openPopover('overflow-other', id, e.currentTarget); }}
-                        title="More options"
-                        aria-label={`More options for ${p.name}`}
-                      >···</button>
-                    )}
+                          {p.routeDistance && (
+                            <>
+                              <span className="eta-dot-sep" aria-hidden="true">·</span>
+                              <span className="eta-dist-label">{p.routeDistance}</span>
+                            </>
+                          )}
+                        </>
+                      )}
+                      {manualDelay > 0 && (
+                        <span className="eta-delay-badge" title={`+${Math.round(manualDelay / 60_000)} min delay added`}>
+                          +{Math.round(manualDelay / 60_000)}m
+                        </span>
+                      )}
+                      {!isMe && (
+                        <button
+                          className="eta-overflow-btn"
+                          onClick={(e) => { e.stopPropagation(); openPopover('overflow-other', id, e.currentTarget); }}
+                          title="More options"
+                          aria-label={`More options for ${p.name}`}
+                        >···</button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Row 3 — warning pills */}
                 {hasWarnings && (
@@ -669,7 +718,7 @@ export default function ETAPanel({
                   </div>
                 )}
 
-                {/* Row 4 — action buttons */}
+                {/* Row 4 — action buttons (own card only, never for anon) */}
                 {isMe && (
                   <div className="eta-card-r4">
                     <button
@@ -730,18 +779,18 @@ export default function ETAPanel({
                 {/* Emoji strip */}
                 {emojiPickerId === id && (
                   <div className="eta-emoji-strip" onClick={(e) => e.stopPropagation()}>
-                    {STATUS_ICONS.map((iconName, i) => (
+                    {STATUS_EMOJIS.map(({ emoji, label }) => (
                       <button
-                        key={iconName}
-                        className={`eta-emoji-btn${p.statusEmoji === iconName ? ' eta-emoji-btn-active' : ''}`}
+                        key={emoji}
+                        className={`eta-emoji-btn${p.statusEmoji === emoji ? ' eta-emoji-btn-active' : ''}`}
                         onClick={() => {
-                          onStatusEmoji(p.statusEmoji === iconName ? null : iconName);
+                          onStatusEmoji(p.statusEmoji === emoji ? null : emoji);
                           setEmojiPickerId(null);
                           haptic(30);
                         }}
-                        aria-label={STATUS_EMOJIS[i]?.label ?? iconName}
-                        aria-pressed={p.statusEmoji === iconName}
-                      ><MatIcon name={iconName} size={20} /></button>
+                        aria-label={label}
+                        aria-pressed={p.statusEmoji === emoji}
+                      >{emoji}</button>
                     ))}
                   </div>
                 )}
@@ -755,7 +804,8 @@ export default function ETAPanel({
           )}
           {pausedList.map(([id, p]) => {
             const isMe   = id === currentParticipantId;
-            const pColor = colorMap[id];
+            const isAnon = p.visibility === 'hidden' && !isMe && !isViewerHostOrCoHost;
+            const pColor = isAnon ? '#94a3b8' : colorMap[id];
             return (
               <div
                 key={id}
@@ -764,12 +814,18 @@ export default function ETAPanel({
                 <div className="eta-card-r1">
                   <div className="eta-card-r1-left">
                     <div className="eta-avatar" style={{ background: pColor }} aria-hidden="true">
-                      {p.name?.[0]?.toUpperCase() ?? '?'}
+                      {isAnon ? '?' : (p.avatarId != null ? <AvatarIcon avatarId={p.avatarId} size={20} /> : (p.name?.[0]?.toUpperCase() ?? '?'))}
                     </div>
                     <span className="eta-card-name">
-                      {p.name}{isMe ? ' (you)' : ''}<StatusIcon statusEmoji={p.statusEmoji} />
+                      {isAnon ? 'Anonymous Guest' : (p.name + (isMe ? ' (you)' : ''))}
+                      {!isAnon && <StatusIcon statusEmoji={p.statusEmoji} />}
                     </span>
-                    {id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && p.plusOnes > 0 && <span className="eta-plus-ones">+{p.plusOnes}</span>}
+                    {!isAnon && p.visibility === 'hidden' && isViewerHostOrCoHost && (
+                      <span className="eta-hidden-badge" title="Hidden participant"><MatIcon name="visibility_off" size={12} /></span>
+                    )}
+                    {!isAnon && id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && id !== hostId && !!session?.permissions?.coHosts?.[id] && <span className="eta-cohost-chip">Co-Host</span>}
                     <span className="eta-paused-badge" aria-label="paused"><MatIcon name="pause_circle" size={16} /></span>
                   </div>
                   <div className="eta-card-r1-right">
@@ -821,7 +877,8 @@ export default function ETAPanel({
           )}
           {arrivedList.map(([id, p]) => {
             const isMe   = id === currentParticipantId;
-            const pColor = colorMap[id];
+            const isAnon = p.visibility === 'hidden' && !isMe && !isViewerHostOrCoHost;
+            const pColor = isAnon ? '#94a3b8' : colorMap[id];
             return (
               <div
                 key={id}
@@ -830,30 +887,38 @@ export default function ETAPanel({
                 <div className="eta-card-r1">
                   <div className="eta-card-r1-left">
                     <div className="eta-avatar" style={{ background: pColor }} aria-hidden="true">
-                      {p.name?.[0]?.toUpperCase() ?? '?'}
+                      {isAnon ? '?' : (p.avatarId != null ? <AvatarIcon avatarId={p.avatarId} size={20} /> : (p.name?.[0]?.toUpperCase() ?? '?'))}
                     </div>
                     <span className="eta-card-name">
-                      {p.name}{isMe ? ' (you)' : ''}<StatusIcon statusEmoji={p.statusEmoji} />
+                      {isAnon ? 'Anonymous Guest' : (p.name + (isMe ? ' (you)' : ''))}
+                      {!isAnon && <StatusIcon statusEmoji={p.statusEmoji} />}
                     </span>
-                    {id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && p.plusOnes > 0 && <span className="eta-plus-ones">+{p.plusOnes}</span>}
+                    {!isAnon && p.visibility === 'hidden' && isViewerHostOrCoHost && (
+                      <span className="eta-hidden-badge" title="Hidden participant"><MatIcon name="visibility_off" size={12} /></span>
+                    )}
+                    {!isAnon && id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && id !== hostId && !!session?.permissions?.coHosts?.[id] && <span className="eta-cohost-chip">Co-Host</span>}
                     <span className="eta-arrived-check" aria-label="arrived"><MatIcon name="check_circle" size={16} fill /></span>
                   </div>
                   <div className="eta-card-r1-right">
-                    {p.lastUpdated && (
+                    {!isAnon && p.lastUpdated && (
                       <span className="eta-r1-arrived-time">{formatArrivalTime(p.lastUpdated)}</span>
                     )}
                   </div>
                 </div>
                 <div className="eta-card-r2">
                   <span className="eta-status-label">Arrived!</span>
-                  <div className="eta-card-r2-right">
-                    <button
-                      className="eta-overflow-btn"
-                      onClick={(e) => { e.stopPropagation(); openPopover('overflow-arrived', id, e.currentTarget); }}
-                      title="More options"
-                      aria-label={`More options for ${p.name}`}
-                    >···</button>
-                  </div>
+                  {!isAnon && (
+                    <div className="eta-card-r2-right">
+                      <button
+                        className="eta-overflow-btn"
+                        onClick={(e) => { e.stopPropagation(); openPopover('overflow-arrived', id, e.currentTarget); }}
+                        title="More options"
+                        aria-label={`More options for ${p.name}`}
+                      >···</button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -865,7 +930,8 @@ export default function ETAPanel({
           )}
           {waiting.map(([id, p]) => {
             const isMe        = id === currentParticipantId;
-            const pColor      = colorMap[id];
+            const isAnon      = p.visibility === 'hidden' && !isMe && !isViewerHostOrCoHost;
+            const pColor      = isAnon ? '#94a3b8' : colorMap[id];
             const nudgeEnd    = nudgeCooldowns[id] ?? 0;
             const nudgeActive = nudgeEnd > now;
             const nudgeSecs   = nudgeActive ? Math.ceil((nudgeEnd - now) / 1000) : 0;
@@ -877,10 +943,18 @@ export default function ETAPanel({
                 <div className="eta-card-r1">
                   <div className="eta-card-r1-left">
                     <div className="eta-avatar" style={{ background: pColor }} aria-hidden="true">
-                      {p.name?.[0]?.toUpperCase() ?? '?'}
+                      {isAnon ? '?' : (p.avatarId != null ? <AvatarIcon avatarId={p.avatarId} size={20} /> : (p.name?.[0]?.toUpperCase() ?? '?'))}
                     </div>
-                    <span className="eta-card-name">{p.name}{isMe ? ' (you)' : ''}</span>
-                    {id === hostId && <span className="eta-host-chip">Host</span>}
+                    <span className="eta-card-name">
+                      {isAnon ? 'Anonymous Guest' : (p.name + (isMe ? ' (you)' : ''))}
+                    </span>
+                    {!isAnon && <RsvpBadge rsvpStatus={p.rsvpStatus} />}
+                    {!isAnon && p.plusOnes > 0 && <span className="eta-plus-ones">+{p.plusOnes}</span>}
+                    {!isAnon && p.visibility === 'hidden' && isViewerHostOrCoHost && (
+                      <span className="eta-hidden-badge" title="Hidden participant"><MatIcon name="visibility_off" size={12} /></span>
+                    )}
+                    {!isAnon && id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && id !== hostId && !!session?.permissions?.coHosts?.[id] && <span className="eta-cohost-chip">Co-Host</span>}
                   </div>
                   <div className="eta-card-r1-right">
                     <span className="eta-r1-countdown eta-r1-muted">—</span>
@@ -888,7 +962,7 @@ export default function ETAPanel({
                 </div>
                 <div className="eta-card-r2">
                   <span className="eta-status-label">Waiting to start</span>
-                  {currentParticipantId && !isMe && (
+                  {!isAnon && currentParticipantId && !isMe && (
                     <div className="eta-card-r2-right">
                       <button
                         className={`eta-nudge-btn${nudgeActive ? ' eta-nudge-btn-sent' : ''}`}
@@ -910,7 +984,8 @@ export default function ETAPanel({
           )}
           {spectatingList.map(([id, p]) => {
             const isMe   = id === currentParticipantId;
-            const pColor = colorMap[id];
+            const isAnon = p.visibility === 'hidden' && !isMe && !isViewerHostOrCoHost;
+            const pColor = isAnon ? '#94a3b8' : colorMap[id];
             return (
               <div
                 key={id}
@@ -920,10 +995,16 @@ export default function ETAPanel({
                 <div className="eta-card-r1">
                   <div className="eta-card-r1-left">
                     <div className="eta-avatar" style={{ background: pColor }} aria-hidden="true">
-                      {p.name?.[0]?.toUpperCase() ?? '?'}
+                      {isAnon ? '?' : (p.avatarId != null ? <AvatarIcon avatarId={p.avatarId} size={20} /> : (p.name?.[0]?.toUpperCase() ?? '?'))}
                     </div>
-                    <span className="eta-card-name">{p.name}{isMe ? ' (you)' : ''}</span>
-                    {id === hostId && <span className="eta-host-chip">Host</span>}
+                    <span className="eta-card-name">
+                      {isAnon ? 'Anonymous Guest' : (p.name + (isMe ? ' (you)' : ''))}
+                    </span>
+                    {!isAnon && p.visibility === 'hidden' && isViewerHostOrCoHost && (
+                      <span className="eta-hidden-badge" title="Hidden participant"><MatIcon name="visibility_off" size={12} /></span>
+                    )}
+                    {!isAnon && id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && id !== hostId && !!session?.permissions?.coHosts?.[id] && <span className="eta-cohost-chip">Co-Host</span>}
                   </div>
                   <div className="eta-card-r1-right">
                     <span className="eta-r1-countdown eta-r1-muted"><MatIcon name="visibility" size={16} /></span>
@@ -947,30 +1028,82 @@ export default function ETAPanel({
               </div>
             );
           })}
-        </div>
 
-        {/* ── Activity tab pane ── */}
-        <div
-          role="tabpanel"
-          aria-label="Activity"
-          className={activeTab === 'activity' ? 'eta-tab-pane' : 'eta-tab-pane-hidden'}
-          style={{ overflowY: contentOverflow }}
-        >
-          {events.length === 0 ? (
-            <div className="eta-activity-empty">No activity yet</div>
-          ) : (
-            <div className="activity-feed" aria-label="Session activity">
-              {[...events].reverse().slice(0, 50).map((evt, i) => (
-                <div key={evt.timestamp || i} className="activity-event">
-                  <span className="activity-event-text">{formatEvent(evt)}</span>
-                  <span className="activity-event-time">{formatArrivalTime(evt.timestamp)}</span>
+          {/* ── Not Going (Maybe / Can't Go) ── */}
+          {notGoingList.length > 0 && (
+            <div className="eta-section-header">Not going</div>
+          )}
+          {notGoingList.map(([id, p]) => {
+            const isMe   = id === currentParticipantId;
+            const isAnon = p.visibility === 'hidden' && !isMe && !isViewerHostOrCoHost;
+            const pColor = isAnon ? '#94a3b8' : colorMap[id];
+            return (
+              <div key={id} className="eta-card eta-card-waiting">
+                <div className="eta-card-r1">
+                  <div className="eta-card-r1-left">
+                    <div className="eta-avatar" style={{ background: pColor }} aria-hidden="true">
+                      {isAnon ? '?' : (p.avatarId != null ? <AvatarIcon avatarId={p.avatarId} size={20} /> : (p.name?.[0]?.toUpperCase() ?? '?'))}
+                    </div>
+                    <span className="eta-card-name">
+                      {isAnon ? 'Anonymous Guest' : (p.name + (isMe ? ' (you)' : ''))}
+                    </span>
+                    {!isAnon && <RsvpBadge rsvpStatus={p.rsvpStatus} />}
+                    {!isAnon && p.plusOnes > 0 && <span className="eta-plus-ones">+{p.plusOnes}</span>}
+                    {!isAnon && id === hostId && <span className="eta-host-chip">Host</span>}
+                    {!isAnon && id !== hostId && !!session?.permissions?.coHosts?.[id] && <span className="eta-cohost-chip">Co-Host</span>}
+                  </div>
+                  <div className="eta-card-r1-right">
+                    <span className="eta-r1-countdown eta-r1-muted">—</span>
+                  </div>
                 </div>
-              ))}
+              </div>
+            );
+          })}
+
+        {/* ── Event Details (collapsible) ── */}
+        <div className="eta-section-collapse">
+          <button
+            className="eta-section-collapse-header"
+            onClick={() => setDetailsOpen(v => !v)}
+            aria-expanded={detailsOpen}
+          >
+            <span>Event Details</span>
+            <MatIcon name={detailsOpen ? 'expand_less' : 'expand_more'} size={20} />
+          </button>
+          {detailsOpen && (
+            <div className="eta-section-collapse-body">
+              <EventDetails
+                session={session}
+                participants={participants}
+                isHost={isHost}
+              />
             </div>
           )}
         </div>
 
-      </div>{/* end eta-tab-content-wrapper */}
+        {/* ── Recent Activity (collapsible) ── */}
+        <div className="eta-section-collapse">
+          <button
+            className="eta-section-collapse-header"
+            onClick={() => setActivityOpen(v => !v)}
+            aria-expanded={activityOpen}
+          >
+            <span>Recent Activity</span>
+            <MatIcon name={activityOpen ? 'expand_less' : 'expand_more'} size={20} />
+          </button>
+          {activityOpen && (
+            <div className="eta-section-collapse-body">
+              <ActivityFeed
+                sessionId={sessionId}
+                variant="panel"
+                maxDisplay={50}
+                emptyText="No activity yet"
+              />
+            </div>
+          )}
+        </div>
+
+      </div>
 
       {/* ── Portal-based popovers ── */}
       {activePopover && popoverP && (
@@ -1028,6 +1161,8 @@ export default function ETAPanel({
             const nEnd  = nudgeCooldowns[activePopover.participantId] ?? 0;
             const nCool = nEnd > now;
             const nSecs = nCool ? Math.ceil((nEnd - now) / 1000) : 0;
+            const targetId = activePopover.participantId;
+            const isTargetCoHost = !!session?.permissions?.coHosts?.[targetId];
             return (
               <div className="popover-items">
                 <button className="popover-item" onClick={() => { handleShareETA(popoverP); closePopover(); }}>
@@ -1041,6 +1176,16 @@ export default function ETAPanel({
                 >
                   <MatIcon name="sms" size={16} /> {nCool ? `Nudge (${nSecs}s)` : 'Send Nudge'}
                 </button>
+                {isViewerHostOrCoHost && targetId !== hostId && !isTargetCoHost && onPromoteCoHost && (
+                  <button className="popover-item" onClick={() => { onPromoteCoHost(targetId, popoverP?.name ?? 'Guest'); closePopover(); }}>
+                    <MatIcon name="shield_person" size={16} /> Make Co-Host
+                  </button>
+                )}
+                {isViewerHostOrCoHost && isTargetCoHost && onDemoteCoHost && (
+                  <button className="popover-item" onClick={() => { onDemoteCoHost(targetId, popoverP?.name ?? 'Guest'); closePopover(); }}>
+                    <MatIcon name="person_remove" size={16} /> Remove Co-Host
+                  </button>
+                )}
               </div>
             );
           })()}
@@ -1070,28 +1215,6 @@ export default function ETAPanel({
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
-function formatEvent(evt) {
-  const name = evt.participantName ?? 'Someone';
-  const d    = evt.detail;
-  switch (evt.type) {
-    case 'joined':       return `${name} joined`;
-    case 'trip_started': {
-      const m = d === 'DRIVING' ? 'driving' : d === 'BICYCLING' ? 'biking'
-        : d === 'WALKING' ? 'walking' : d === 'TRANSIT' ? 'on transit' : null;
-      return m ? `${name} started ${m}` : `${name} started their trip`;
-    }
-    case 'eta_bumped':    return `${name} bumped ETA ${d ?? ''}`;
-    case 'mode_switched': return `${name} switched to ${d ?? 'new mode'}`;
-    case 'paused':        return `${name} paused location sharing`;
-    case 'resumed':       return `${name} resumed`;
-    case 'arrived':       return `${name} arrived`;
-    case 'almost_there':       return `${name} is almost there`;
-    case 'left':               return `${name} left the meetup`;
-    case 'spectating':         return `${name} is spectating`;
-    case 'stopped_spectating': return `${name} stopped spectating`;
-    default:                   return `${name} ${evt.type}`;
-  }
-}
 
 function etaMs(p, now) {
   let base = null;

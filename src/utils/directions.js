@@ -18,58 +18,77 @@
  * @param {{ lat: number, lng: number }} origin
  * @param {{ lat: number, lng: number }} destination
  * @param {'DRIVING'|'BICYCLING'|'TRANSIT'|'WALKING'} [travelMode='DRIVING']
+ * @param {{ lat: number, lng: number }[]} [waypoints=[]] — optional intermediate stops (max 3)
  * @returns {Promise<{ eta: number, routePolyline: string, transitArrivalTime: number|null, transitInfo: object|null }>}
  * @throws if the API returns a non-OK status; err.code === 'ZERO_RESULTS' for no-route cases
  */
-export function getETAWithRoute(origin, destination, travelMode = "DRIVING") {
+export function getETAWithRoute(origin, destination, travelMode = "DRIVING", waypoints = []) {
   return new Promise((resolve, reject) => {
     const service = new window.google.maps.DirectionsService();
-    service.route(
-      {
-        origin: new window.google.maps.LatLng(origin.lat, origin.lng),
-        destination: new window.google.maps.LatLng(
-          destination.lat,
-          destination.lng,
-        ),
-        travelMode: window.google.maps.TravelMode[travelMode],
-      },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK) {
-          const leg = result.routes[0].legs[0];
+    const request = {
+      origin: new window.google.maps.LatLng(origin.lat, origin.lng),
+      destination: new window.google.maps.LatLng(
+        destination.lat,
+        destination.lng,
+      ),
+      travelMode: window.google.maps.TravelMode[travelMode],
+    };
 
-          // Transit: use the API's scheduled arrival timestamp directly.
-          // The Maps JS SDK returns arrival_time.value as a JavaScript Date object
-          // (unlike the REST API which returns seconds). Use .getTime() — which
-          // already returns milliseconds — rather than multiplying by 1000, which
-          // would produce a value 1000× too large.
+    // Add waypoints if provided (stopover = true preserves user's stop order)
+    if (waypoints.length > 0) {
+      request.waypoints = waypoints.map((wp) => ({
+        location: new window.google.maps.LatLng(wp.lat, wp.lng),
+        stopover: true,
+      }));
+      request.optimizeWaypoints = false;
+    }
+
+    service.route(request, (result, status) => {
+        if (status === window.google.maps.DirectionsStatus.OK) {
+          const legs = result.routes[0].legs;
+          const lastLeg = legs[legs.length - 1];
+
+          // Sum duration and distance across all legs (waypoints create multiple legs)
+          const totalEta = legs.reduce((sum, leg) => sum + leg.duration.value, 0);
+          const totalDistanceMeters = legs.reduce((sum, leg) => sum + (leg.distance?.value ?? 0), 0);
+
+          // Format total distance text
+          const totalMiles = totalDistanceMeters / 1609.34;
+          const totalKm = totalDistanceMeters / 1000;
+          const routeDistance = totalMiles >= 0.1
+            ? `${totalMiles.toFixed(1)} mi`
+            : `${totalKm.toFixed(1)} km`;
+
+          // Transit: use the API's scheduled arrival timestamp from the last leg.
           const transitArrivalTime =
-            travelMode === "TRANSIT" && leg.arrival_time
-              ? leg.arrival_time.value.getTime() // Date → ms (no * 1000)
+            travelMode === "TRANSIT" && lastLeg.arrival_time
+              ? lastLeg.arrival_time.value.getTime()
               : null;
 
           // Transit: extract first transit leg's line + vehicle details
           let transitInfo = null;
           if (travelMode === "TRANSIT") {
-            const step = leg.steps?.find((s) => s.travel_mode === "TRANSIT");
-            if (step?.transit) {
-              transitInfo = {
-                line:
-                  step.transit.line?.short_name ||
-                  step.transit.line?.name ||
-                  null,
-                vehicleType: step.transit.vehicle?.type || null, // BUS, SUBWAY, RAIL, TRAM …
-                departureStop: step.transit.departure_stop?.name || null,
-              };
+            for (const leg of legs) {
+              const step = leg.steps?.find((s) => s.travel_mode === "TRANSIT");
+              if (step?.transit) {
+                transitInfo = {
+                  line:
+                    step.transit.line?.short_name ||
+                    step.transit.line?.name ||
+                    null,
+                  vehicleType: step.transit.vehicle?.type || null,
+                  departureStop: step.transit.departure_stop?.name || null,
+                };
+                break;
+              }
             }
           }
 
           resolve({
-            eta: leg.duration.value, // seconds
-            routePolyline: result.routes[0].overview_polyline, // encoded string
-            // Distance from the first leg — text is a locale-aware display string
-            // (e.g. "14.2 mi" or "22.8 km"); value is metres for future math.
-            routeDistance: leg.distance?.text ?? null,
-            routeDistanceMeters: leg.distance?.value ?? null,
+            eta: totalEta, // seconds (sum of all legs)
+            routePolyline: result.routes[0].overview_polyline, // encoded string (covers all legs)
+            routeDistance,
+            routeDistanceMeters: totalDistanceMeters,
             transitArrivalTime,
             transitInfo,
           });

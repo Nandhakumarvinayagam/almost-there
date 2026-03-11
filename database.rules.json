@@ -4,14 +4,64 @@
       ".read": false,
       ".write": false,
       "$sessionId": {
-        ".read": true,
-        ".write": true,
-        "participants": {
-          "$participantId": {
-            "status": {
-              ".validate": "newData.val() === null || newData.val().matches(/^(not-started|en-route|almost-there|paused|arrived|spectating)$/)"
+        ".read": "auth != null && !root.child('sessions/' + $sessionId + '/blockedUsers/' + auth.uid).exists()",
+        ".write": "auth != null && !root.child('sessions/' + $sessionId + '/blockedUsers/' + auth.uid).exists()",
+
+        "hostId": {
+          ".write": "!data.exists()"
+        },
+
+        "hostSecretHash": {
+          ".write": "!data.exists()"
+        },
+
+        "blockedUsers": {
+          ".write": "auth.uid === data.parent().child('hostId').val()"
+        },
+
+        "permissions": {
+          ".write": "auth.uid === data.parent().child('hostId').val() || (newData.child('coHosts/' + auth.uid).exists() && !data.child('coHosts/' + auth.uid).exists())"
+        },
+
+        "state": {
+          ".write": "auth.uid === data.parent().child('hostId').val() || data.parent().child('permissions/coHosts/' + auth.uid).exists() || (data.val() === 'scheduled' && newData.val() === 'active' && now > data.parent().child('scheduledTime').val())"
+        },
+
+        "logistics": {
+          ".write": "auth.uid === data.parent().child('hostId').val() || data.parent().child('permissions/coHosts/' + auth.uid).exists()"
+        },
+
+        "poll": {
+          ".write": "auth.uid === data.parent().child('hostId').val() || data.parent().child('permissions/coHosts/' + auth.uid).exists()",
+          "options": {
+            "$optionId": {
+              "votes": {
+                ".write": "true"
+              }
             }
           }
+        },
+
+        "participants": {
+          "$participantId": {
+            ".write": "auth.uid === $participantId || auth.uid === data.parent().parent().child('hostId').val() || data.parent().parent().child('permissions/coHosts/' + auth.uid).exists()",
+
+            "status": {
+              ".validate": "newData.val() === null || newData.val().matches(/^(not-started|en-route|almost-there|paused|arrived|spectating)$/)"
+            },
+
+            "pollVote": {
+              ".validate": "!data.exists() || auth.uid === data.parent().parent().parent().child('hostId').val() || data.parent().parent().parent().child('permissions/coHosts/' + auth.uid).exists()"
+            }
+          }
+        },
+
+        "reactions": {
+          ".write": "true"
+        },
+
+        "activityFeed": {
+          ".write": "true"
         }
       }
     }

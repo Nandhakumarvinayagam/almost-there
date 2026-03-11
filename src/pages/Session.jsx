@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLoadScript, GoogleMap } from '@react-google-maps/api';
+import { useLoadScript, GoogleMap, OverlayView } from '@react-google-maps/api';
 import { ref as dbRef, onValue } from 'firebase/database';
 import { db } from '../utils/firebase';
 import { useSession } from '../hooks/useSession';
@@ -10,6 +10,7 @@ import { SESSION_STATUS, STATUS, MODE_SWITCH_COOLDOWN_MS, ARRIVAL_PIN_HIDE_DELAY
 import { DARK_MAP_STYLES } from '../config/mapStyles';
 import { useColorScheme } from '../hooks/useColorScheme';
 import JoinPrompt from '../components/JoinPrompt';
+import Lobby from '../components/Lobby';
 import ETAPanel from '../components/ETAPanel';
 import { triggerShare } from '../components/ShareLink';
 import ParticipantMarker from '../components/ParticipantMarker';
@@ -20,6 +21,7 @@ import LocationPermissionPrompt from '../components/LocationPermissionPrompt';
 import Toast from '../components/Toast';
 import SessionRecap from '../components/SessionRecap';
 import { saveSession } from '../utils/sessionHistory';
+import { normalizeParticipant } from '../utils/normalizers';
 import { getNavigationURL } from '../utils/navigation';
 import { copyToClipboard } from '../utils/clipboard';
 import { useToast } from '../hooks/useToast';
@@ -27,7 +29,9 @@ import { haversineDistance } from '../utils/geo';
 import { getColorPreference, setColorPreference } from '../utils/colorPrefs';
 import { haptic } from '../utils/haptic';
 import { generateGoogleCalendarURL, generateICSBlob } from '../utils/calendar';
+import { hexToRgb, getContrastTextColor } from '../utils/theme';
 import MatIcon from '../components/MatIcon';
+import { auth, whenAuthReady } from '../utils/firebase';
 
 // Stable reference — must be outside component to prevent re-renders
 const LIBRARIES = ['places'];
@@ -112,26 +116,6 @@ function NavigateIcon() {
 }
 
 
-/** Outline SVG pencil icon — replaces the ✏️ emoji in the notes banner. */
-function PencilIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
 /**
  * Returns true if newBounds fits inside 1.5× the map's current viewport.
  * Used to decide between panToBounds (small move) and fitBounds (large jump).
@@ -169,45 +153,49 @@ export default function Session() {
 
   const navigate = useNavigate();
 
-  const { session, loading, error, joinSession, startTrip, updateRoute, switchTravelMode, bumpETA, updateLocation, updateStatus, updateStatusEmoji, markArrivedManually, endSession, leaveSession, updateNotes, updateKeepVisible, logEvent, setSpectating, exitSpectating } =
+  const { session, loading, error, joinWithRSVP, updateRSVP, startTrip, updateRoute, switchTravelMode, bumpETA, updateLocation, updateStatus, updateStatusEmoji, markArrivedManually, endSession, leaveSession, kickParticipant, promoteCoHost, demoteCoHost, reclaimHost, updateNotes, updateKeepVisible, toggleNearby, toggleVisibility, logEvent, setSpectating, exitSpectating, votePoll, toggleReaction, saveHighlightMemory } =
     useSession(sessionId);
 
   // ---- Participant identity ----
   const [participantId, setParticipantId] = useState(
     () => sessionStorage.getItem(`participant_${sessionId}`) ?? null
   );
+
+  // Track the Firebase anonymous auth UID separately from participantId.
+  // participantId comes from sessionStorage and is null until the user joins,
+  // but authUid persists across tab closures (Firebase stores it in IndexedDB).
+  // This lets us recognize returning hosts even before they re-join.
+  const [authUid, setAuthUid] = useState(() => auth.currentUser?.uid ?? null);
+
+  // Once auth resolves, validate the stored participantId and capture authUid.
+  // If it was a legacy random ID (pre-auth), clear it so the user re-joins
+  // with their stable auth UID, matching the security rule auth.uid === $participantId.
+  useEffect(() => {
+    whenAuthReady.then((user) => {
+      if (!user) return;
+      setAuthUid(user.uid);
+      const stored = sessionStorage.getItem(`participant_${sessionId}`);
+      if (stored && stored !== user.uid) {
+        sessionStorage.removeItem(`participant_${sessionId}`);
+        setParticipantId(null);
+      }
+    });
+  }, [sessionId]);
   const [joining, setJoining] = useState(false);
 
   // ---- Toast notifications (Features 6 & 7) ----
   const { toast, showToast } = useToast();
   const [addrCopyBounce, setAddrCopyBounce] = useState(false);
 
+  // ---- Participant join-count celebration ----
+  const [hasCelebratedJoinCount, setHasCelebratedJoinCount] = useState(false);
+  const [joinCountBanner, setJoinCountBanner] = useState(false);
+
   // ---- Leave meetup ----
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [isLeaving, setIsLeaving]           = useState(false);
   const [showKebabMenu, setShowKebabMenu]   = useState(false);
   const kebabRef = useRef(null);
-
-  // ---- Notes banner ----
-  const [notesDismissed,       setNotesDismissed]       = useState(false);
-  const [notesEditing,         setNotesEditing]         = useState(false);
-  const [notesEditText,        setNotesEditText]        = useState('');
-  const [notesSaving,          setNotesSaving]          = useState(false);
-  // Auto-collapse: banner collapses after 5 s on mobile; once collapsed, timer doesn't restart
-  const [notesAutoCollapsed,   setNotesAutoCollapsed]   = useState(false);
-  const [notesHasAutocollapsed, setNotesHasAutocollapsed] = useState(false);
-
-  // Auto-collapse timer — fires once on mobile. On desktop the CSS override keeps the banner
-  // fully visible regardless of this state, so we don't need to gate it on isSidebar here.
-  // CRITICAL: cleanup on unmount / deps change.
-  useEffect(() => {
-    if (!session?.notes || notesDismissed || notesEditing || notesHasAutocollapsed) return;
-    const t = setTimeout(() => {
-      setNotesAutoCollapsed(true);
-      setNotesHasAutocollapsed(true);
-    }, 5_000);
-    return () => clearTimeout(t);
-  }, [session?.notes, notesDismissed, notesEditing, notesHasAutocollapsed]);
 
   // ---- Scheduled time countdown ----
   const [timeLeft, setTimeLeft] = useState(null); // null = not yet initialized
@@ -269,6 +257,11 @@ export default function Session() {
   const [travelMode, setTravelMode] = useState('DRIVING');
   const [modeError, setModeError] = useState(null);
   const travelModeRef = useRef('DRIVING');
+  // Ref for session stops — avoids stale closures in memoized callbacks
+  const sessionStopsRef = useRef([]);
+  useEffect(() => {
+    sessionStopsRef.current = (session?.stops || []).filter(s => s.lat != null);
+  }, [session?.stops]);
 
   // ---- Location permission ----
   const [geoError, setGeoError] = useState(null);
@@ -302,15 +295,24 @@ export default function Session() {
   // ---- Derived state ----
   const isExpired = session ? now > session.expiresAt : false;
   const isEnded = session?.status === SESSION_STATUS.COMPLETED;
-  const isHost = !!participantId && session?.hostId === participantId;
+  // Check both participantId (sessionStorage-based, set after join) and authUid
+  // (Firebase auth, persists across tab closures). This ensures the host is
+  // recognized even before re-joining (e.g. opened session in a new tab).
+  const isHost = (!!participantId && session?.hostId === participantId)
+    || (!!authUid && session?.hostId === authUid);
+  const isCoHost = (!!participantId && !!session?.permissions?.coHosts?.[participantId])
+    || (!!authUid && !!session?.permissions?.coHosts?.[authUid]);
   const destination = session?.destination ?? null;
   const participants = useMemo(
-    () => (session?.participants ? Object.entries(session.participants) : []),
+    () =>
+      session?.participants
+        ? Object.entries(session.participants).map(([id, p]) => [id, normalizeParticipant(p)])
+        : [],
     [session?.participants]
   );
 
   // ---- Trip state ----
-  const myParticipant = session?.participants?.[participantId] ?? null;
+  const myParticipant = normalizeParticipant(session?.participants?.[participantId] ?? null);
   const participantStatus = myParticipant?.status ?? STATUS.NOT_STARTED;
   // tripStarted: true for any status except NOT_STARTED — hides the pre-trip bar.
   // SPECTATING is intentionally included so spectators also dismiss the pre-trip bar.
@@ -337,20 +339,50 @@ export default function Session() {
   );
   const allArrived = travelers.length > 0 && travelers.every(([, p]) => p.status === STATUS.ARRIVED);
 
+  // ---- Participant count + celebration ----
+  const participantCount = participants.length;
+  const expectedCount = session?.expectedCount ?? null;
+
+  // Fire once when count reaches expectedCount; guard prevents re-trigger on leave+rejoin.
+  // CRITICAL: return cleanup to clear the auto-dismiss timer on unmount / deps change.
+  useEffect(() => {
+    if (!expectedCount || hasCelebratedJoinCount || participantCount < expectedCount) return;
+    setHasCelebratedJoinCount(true);
+    setJoinCountBanner(true);
+    const t = setTimeout(() => setJoinCountBanner(false), 3_000);
+    return () => clearTimeout(t);
+  }, [participantCount, expectedCount, hasCelebratedJoinCount]);
+
   // ---- Calendar params (for scheduled meetup export) ----
   const calendarParams = useMemo(() => {
     if (!session?.scheduledTime || !destination) return null;
     const title = session?.nickname
       ? `${session.nickname} — Almost There`
       : `Meetup at ${destination.name || destination.address || 'destination'}`;
+    // Build RSVP summary for calendar description
+    let rsvpSummary;
+    if (participants.length > 0) {
+      let going = 0, maybe = 0, cantGo = 0;
+      for (const [, p] of participants) {
+        const r = p.rsvpStatus ?? 'going';
+        if (r === 'going')        going += 1 + (p.plusOnes ?? 0);
+        else if (r === 'maybe')   maybe++;
+        else if (r === 'cant-go') cantGo++;
+      }
+      const parts = [`${going} going`];
+      if (maybe > 0)  parts.push(`${maybe} maybe`);
+      if (cantGo > 0) parts.push(`${cantGo} can't go`);
+      rsvpSummary = parts.join(', ');
+    }
     return {
       title,
       startTime: session.scheduledTime,
       location: destination.address || destination.name,
       description: session?.notes || undefined,
+      rsvpSummary,
       sessionURL: `${window.location.origin}/session/${sessionId}`,
     };
-  }, [session?.scheduledTime, session?.nickname, session?.notes, destination, sessionId]);
+  }, [session?.scheduledTime, session?.nickname, session?.notes, destination, sessionId, participants]);
 
   // ---- Countdown derived state ----
   // showCountdownBanner stays true even after timeLeft hits 0 (so the parent
@@ -385,6 +417,9 @@ export default function Session() {
       wasHost: isHost,
       scheduledTime: session.scheduledTime ?? null,
       expiresAt: session.expiresAt ?? null,
+      // Store social fields for host so "Clone This Meetup" works from the home screen
+      ...(isHost && session.theme        && { theme:        session.theme        }),
+      ...(isHost && session.logistics    && { logistics:    session.logistics     }),
     });
   }, [isEnded, isExpired, session, sessionId, isHost]);
 
@@ -564,9 +599,14 @@ export default function Session() {
   // Fetch location as soon as the user joins so the map can show both
   // destination + user, and so the "I'm Leaving Now" button can be
   // enabled with a ready animation once location resolves.
+  // 'Maybe' location gate (Section 8, Plan v5): do NOT pre-fetch location for
+  // Maybe/Can't Go participants — they have no intention of sharing location.
+  // When they tap "Change to Going", rsvpStatus changes → this effect re-runs
+  // (preLocationAttemptedRef is still false) and geolocation kicks in.
   useEffect(() => {
     if (!participantId || tripStarted || preLocationAttemptedRef.current) return;
     if (!navigator.geolocation) return;
+    if (myParticipant?.rsvpStatus === 'maybe' || myParticipant?.rsvpStatus === 'cant-go') return;
     preLocationAttemptedRef.current = true;
     setPreLocating(true);
     navigator.geolocation.getCurrentPosition(
@@ -577,7 +617,7 @@ export default function Session() {
       () => setPreLocating(false),
       { enableHighAccuracy: true, timeout: 15_000 }
     );
-  }, [participantId, tripStarted]);
+  }, [participantId, tripStarted, myParticipant?.rsvpStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Brief scale-in animation on the button when location first resolves.
   useEffect(() => {
@@ -599,7 +639,7 @@ export default function Session() {
   // ---- Panel height tracking (for map padding + floating control positioning) ----
   // panelHeightRef: current visible panel height in px (not state — avoids re-render churn)
   // panelAtFull: boolean state for opacity transition of floating controls
-  const panelHeightRef = useRef(80); // default collapsed height
+  const panelHeightRef = useRef(160); // default peek height
   const [panelAtFull, setPanelAtFull] = useState(false);
 
   const handlePanelHeightChange = useCallback((heightPx, isFullSnap) => {
@@ -610,25 +650,75 @@ export default function Session() {
   // ---- Map instance + smart viewport fit ----
   const mapRef = useRef(null);
   const hasDoneInitialFitRef = useRef(false);
-  const prevFitStateRef = useRef(null); // { count, statuses, positions[] }
+  const prevFitStateRef = useRef(null); // { count, positions[] }
+  // Ref-gating: prevent auto-fit from fighting a manual user pan.
+  const userHasInteracted = useRef(false);
+  const isProgrammaticMove = useRef(false);
+  // Debounce guard: timestamp of last fitBounds call; prevents rapid-fire re-fits.
+  const lastFitBoundsTime = useRef(0);
 
   // 'overview' fits all active participants; 'follow-me' pans to current user
   const [mapMode, setMapMode] = useState('overview');
 
   const handleMapLoad = useCallback((map) => {
     mapRef.current = map;
+    map.addListener('dragstart', () => {
+      if (!isProgrammaticMove.current) {
+        userHasInteracted.current = true;
+      }
+    });
   }, []);
 
-  // Only EN_ROUTE + ALMOST_THERE participants count for auto-fit bounds
-  const activeForBounds = useMemo(
-    () => participants.filter(([, p]) =>
-      p.status === STATUS.EN_ROUTE || p.status === STATUS.ALMOST_THERE
-    ),
-    [participants]
-  );
+  // Participants with locations count for auto-fit bounds.
+  // Include PAUSED and recently-ARRIVED so the map stays stable on status changes.
+  const activeForBounds = useMemo(() => {
+    const now = Date.now();
+    return participants.filter(([, p]) => {
+      if (!p.location) return false;
+      if (p.status === STATUS.EN_ROUTE || p.status === STATUS.ALMOST_THERE || p.status === STATUS.PAUSED) {
+        return true;
+      }
+      if (p.status === STATUS.ARRIVED) {
+        const arrivedRecently = p.lastUpdated && (now - p.lastUpdated) < ARRIVAL_PIN_HIDE_DELAY_MS;
+        return p.keepVisible || arrivedRecently;
+      }
+      return false;
+    });
+  }, [participants]);
+
+  // Spatial fingerprint: a stable string that only changes when participant
+  // locations, statuses, or IDs change. Non-spatial fields (statusEmoji, name,
+  // reactions, pollVote, etc.) don't affect it, so they won't trigger fitBounds.
+  const spatialFingerprint = useMemo(() => {
+    if (!participants || participants.length === 0) return '[]';
+    return JSON.stringify(
+      participants.map(([id, p]) => [
+        id,
+        // Round to 4 dp (~11m precision) to absorb micro-GPS jitter (3–10m).
+        // This prevents a tiny location drift coinciding with a non-spatial write
+        // (e.g. statusEmoji) from changing the fingerprint and triggering a re-fit.
+        p.location?.lat != null ? Math.round(p.location.lat * 10000) / 10000 : null,
+        p.location?.lng != null ? Math.round(p.location.lng * 10000) / 10000 : null,
+        p.status ?? null,
+      ])
+    );
+  }, [participants]);
+
+  // participantsRef: stable ref so fitMapBounds doesn't need 'participants' in its
+  // useCallback deps. Firebase onValue creates new object references on every update
+  // (including activityFeed, reactions, headcount) — keeping 'participants' in the deps
+  // would cause fitMapBounds to get a new reference on every update, which in turn
+  // would cause the smart fit effect to re-run unnecessarily.
+  const participantsRef = useRef(participants);
+  participantsRef.current = participants;
 
   const fitMapBounds = useCallback(() => {
     if (!mapRef.current || !destination) return;
+    // Don't fight a manual user pan — only the Re-center button overrides this.
+    if (userHasInteracted.current) return;
+    // Debounce: skip if fitBounds ran within the last 2 seconds.
+    if (Date.now() - lastFitBoundsTime.current < 2000) return;
+    lastFitBoundsTime.current = Date.now();
 
     // Dynamic bottom padding based on current panel height.
     // Math.min safeguard: prevents fatal "Padding exceeds map dimensions" error
@@ -643,8 +733,9 @@ export default function Session() {
 
     const bounds = new window.google.maps.LatLngBounds();
     bounds.extend({ lat: destination.lat, lng: destination.lng });
-    // Prefer active participants; fall back to all participants for initial fit
-    const group = activeForBounds.length > 0 ? activeForBounds : participants;
+    // Prefer active participants; fall back to all participants for initial fit.
+    // Use participantsRef so this callback stays stable across non-position updates.
+    const group = activeForBounds.length > 0 ? activeForBounds : participantsRef.current;
     let extraPoints = 0;
     group.forEach(([, p]) => { if (p.location) { bounds.extend(p.location); extraPoints++; } });
 
@@ -655,42 +746,58 @@ export default function Session() {
       mapRef.current.setCenter({ lat: destination.lat, lng: destination.lng });
       mapRef.current.setZoom(14);
       hasDoneInitialFitRef.current = true;
-      prevFitStateRef.current = { count: 0, statuses: '', positions: [] };
       return;
     }
 
     if (bounds.isEmpty()) return;
+
+    // Mark as programmatic so the dragstart listener doesn't count this as
+    // a user interaction. Reset via idle event + 500ms fallback (the fallback
+    // handles the case where fitBounds doesn't change the viewport, meaning
+    // the 'idle' event never fires and isProgrammaticMove would stay stuck).
+    isProgrammaticMove.current = true;
+    window.google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
+      isProgrammaticMove.current = false;
+    });
+    setTimeout(() => { isProgrammaticMove.current = false; }, 500);
+
     if (hasDoneInitialFitRef.current && isBoundsNearby(mapRef.current, bounds)) {
       mapRef.current.panToBounds(bounds, padding);
     } else {
       mapRef.current.fitBounds(bounds, padding);
     }
-  }, [destination, activeForBounds, participants]);
+  }, [destination, activeForBounds]); // 'participants' removed — use participantsRef instead
 
-  // Smart fit: refit when count / status / positions change significantly
+  // fitMapBoundsRef: lets the smart fit effect call the latest fitMapBounds without
+  // including it in the effect's dependency array. Without this, every Firebase update
+  // (activityFeed, reactions, etc.) would cause fitMapBounds to get a new reference,
+  // which would cause the smart fit effect to re-run and potentially fire fitBounds()
+  // on every update — causing the unintended zoom-out bug.
+  const fitMapBoundsRef = useRef(fitMapBounds);
+  fitMapBoundsRef.current = fitMapBounds;
+
+  // Smart fit: refit when spatial data (locations, statuses, participant IDs) changes.
+  // spatialFingerprint only changes on actual movement/join/leave/status changes —
+  // non-spatial writes like statusEmoji, name, reactions won't trigger this effect.
   useEffect(() => {
     if (!mapRef.current || !destination || mapMode !== 'overview') return;
+    fitMapBoundsRef.current();
+    hasDoneInitialFitRef.current = true;
+  }, [destination, spatialFingerprint, mapMode]); // spatialFingerprint replaces activeForBounds
 
-    const count    = activeForBounds.length;
-    const statuses = activeForBounds.map(([, p]) => p.status).join(',');
-    const positions = activeForBounds.map(([, p]) => p.location).filter(Boolean);
-    const prev = prevFitStateRef.current;
-
-    const countChanged  = !prev || prev.count !== count;
-    const statusChanged = !prev || prev.statuses !== statuses;
-    const movedFar = prev?.positions
-      ? prev.positions.some((prevLoc, i) => {
-          const cur = positions[i];
-          return cur ? haversineDistance(prevLoc, cur) > 200 : false;
-        })
-      : false;
-
-    if (!hasDoneInitialFitRef.current || countChanged || statusChanged || movedFar) {
-      fitMapBounds();
-      hasDoneInitialFitRef.current = true;
-      prevFitStateRef.current = { count, statuses, positions };
+  // Trip-started auto-lock: once the current user's trip begins, lock the map so
+  // GPS drift doesn't cause unwanted re-fits during active navigation.
+  // The isProgrammaticMove guard prevents this from firing during a recenter operation
+  // (which would cancel the recenter fitBounds before it executes).
+  useEffect(() => {
+    if (
+      myParticipant?.status &&
+      myParticipant.status !== 'not-started' &&
+      !isProgrammaticMove.current
+    ) {
+      userHasInteracted.current = true;
     }
-  }, [destination, activeForBounds, mapMode, fitMapBounds]);
+  }, [myParticipant?.status]);
 
   // Follow Me: pan to current user on every location update.
   // For spectators (no location), fall back to centering on the destination.
@@ -729,9 +836,11 @@ export default function Session() {
 
   // ---- Handlers ----
   const handleJoin = useCallback(
-    async (name) => {
+    async (name, rsvpStatus = 'going', plusOnes = 0, visibility = 'visible', avatarId = null) => {
       setJoining(true);
-      const pid = generateParticipantId();
+      // Use the stable anonymous auth UID so Firebase ownership rules work.
+      // Fall back to the legacy random generator only if auth hasn't resolved yet.
+      const pid = auth.currentUser?.uid ?? generateParticipantId();
       try {
         // Determine color: prefer localStorage hint, avoid colors already taken
         const takenIndices = new Set(
@@ -748,7 +857,9 @@ export default function Session() {
           colorIndex = slot % PARTICIPANT_COLORS.length;
         }
         setColorPreference(name, colorIndex);
-        await joinSession(pid, name, colorIndex);
+        // joinWithRSVP writes rsvpStatus, plusOnes, headcount delta, and activityFeed entry.
+        // logEvent still writes to the separate 'events' node for the ETA panel activity tab.
+        await joinWithRSVP(pid, name, colorIndex, rsvpStatus, plusOnes, visibility, avatarId);
         sessionStorage.setItem(`participant_${sessionId}`, pid);
         sessionStorage.setItem(`name_${sessionId}`, name);
         setParticipantId(pid);
@@ -757,7 +868,42 @@ export default function Session() {
         setJoining(false);
       }
     },
-    [joinSession, sessionId, participants, logEvent]
+    [joinWithRSVP, sessionId, participants, logEvent]
+  );
+
+  // Lobby join: used when session.state === 'scheduled'.
+  // Reuses the same color-selection logic as handleJoin, but calls joinWithRSVP
+  // so rsvpStatus, plusOnes, headcount transaction, and activity feed entry are
+  // all written in one go. After joining, the user sees the lobby with their
+  // RSVP status shown. When the session later transitions to 'active', the
+  // existing participantId in sessionStorage reconnects them to the map view.
+  const handleLobbyJoin = useCallback(
+    async (name, rsvpStatus, plusOnes, visibility = 'visible', avatarId = null) => {
+      setJoining(true);
+      const pid = auth.currentUser?.uid ?? generateParticipantId();
+      try {
+        const takenIndices = new Set(
+          participants.map(([, p]) => p.colorIndex).filter((ci) => typeof ci === 'number')
+        );
+        const preferred = getColorPreference(name);
+        let colorIndex;
+        if (typeof preferred === 'number' && !takenIndices.has(preferred % PARTICIPANT_COLORS.length)) {
+          colorIndex = preferred % PARTICIPANT_COLORS.length;
+        } else {
+          let slot = 0;
+          while (takenIndices.has(slot % PARTICIPANT_COLORS.length)) slot++;
+          colorIndex = slot % PARTICIPANT_COLORS.length;
+        }
+        setColorPreference(name, colorIndex);
+        await joinWithRSVP(pid, name, colorIndex, rsvpStatus, plusOnes, visibility, avatarId);
+        sessionStorage.setItem(`participant_${sessionId}`, pid);
+        sessionStorage.setItem(`name_${sessionId}`, name);
+        setParticipantId(pid);
+      } finally {
+        setJoining(false);
+      }
+    },
+    [joinWithRSVP, sessionId, participants]
   );
 
   const handleEndSession = useCallback(async () => {
@@ -770,8 +916,14 @@ export default function Session() {
     setMapMode((prev) => {
       const next = prev === 'overview' ? 'follow-me' : 'overview';
       if (next === 'overview') {
-        // Reset debounce state so overview refits immediately on switch back
-        prevFitStateRef.current = null;
+        // Mark as programmatic BEFORE clearing userHasInteracted, so the
+        // trip-started auto-lock effect doesn't immediately re-lock the map
+        // and cancel the recenter fitBounds (ping-pong prevention).
+        // The isProgrammaticMove flag is cleared by the 'idle' event and
+        // 500ms fallback inside fitMapBounds, after which the auto-lock re-engages.
+        isProgrammaticMove.current = true;
+        userHasInteracted.current = false;
+        lastFitBoundsTime.current = 0; // reset debounce so recenter fires immediately
       }
       return next;
     });
@@ -797,7 +949,7 @@ export default function Session() {
     async (location, { resetBump = false } = {}) => {
       if (!participantId || !destination) return;
       try {
-        const result = await getETAWithRoute(location, destination, travelModeRef.current);
+        const result = await getETAWithRoute(location, destination, travelModeRef.current, sessionStopsRef.current);
         const routeData = {
           location,
           eta: result.eta,
@@ -902,7 +1054,7 @@ export default function Session() {
 
       setStartingPhase('route');
       try {
-        const result = await getETAWithRoute(location, destination, travelMode);
+        const result = await getETAWithRoute(location, destination, travelMode, sessionStopsRef.current);
         eta = result.eta;
         tripPolyline = result.routePolyline;
         transitArrivalTime = result.transitArrivalTime ?? null;
@@ -1001,7 +1153,7 @@ export default function Session() {
           })
         );
         const location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const result = await getETAWithRoute(location, destination, newMode);
+        const result = await getETAWithRoute(location, destination, newMode, sessionStopsRef.current);
         await switchTravelMode(participantId, {
           travelMode: newMode,
           eta: result.eta,
@@ -1032,6 +1184,22 @@ export default function Session() {
     if (!participantId) return;
     await exitSpectating(participantId, myParticipant?.name);
   }, [participantId, exitSpectating, myParticipant?.name]);
+
+  // 'Maybe' location gate (Section 8, Plan v5):
+  // Converts a Maybe/Can't-Go participant to Going so location sharing can start.
+  // Uses update() to preserve all other participant fields (customResponses, etc.).
+  // Headcount delta and activityFeed entry are written inside updateRSVP.
+  const handleChangeToGoing = useCallback(async () => {
+    if (!participantId || !myParticipant) return;
+    await updateRSVP(participantId, {
+      oldStatus: myParticipant.rsvpStatus,
+      newStatus: 'going',
+      oldPlusOnes: myParticipant.plusOnes,
+      newPlusOnes: myParticipant.plusOnes,
+      participantName: myParticipant.name,
+      isHidden: myParticipant.visibility === 'hidden',
+    });
+  }, [participantId, myParticipant?.rsvpStatus, myParticipant?.plusOnes, myParticipant?.name, myParticipant?.visibility, updateRSVP]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Pre-ask gate for start trip ----
   const handleStartTripClick = useCallback(async () => {
@@ -1123,6 +1291,22 @@ export default function Session() {
     );
   }
 
+  // PERMISSION_DENIED fires when blockedUsers contains this user's UID.
+  // Also catch it via the session data for cases where rules aren't yet enforced
+  // (security rules use auth.uid; blockedUsers key uses participantId).
+  const isKicked =
+    error === 'permission-denied' ||
+    (!!participantId && !!session?.blockedUsers?.[participantId]);
+
+  if (isKicked) {
+    return (
+      <div className="session-message">
+        <h2>You've been removed from this session.</h2>
+        <a href="/" className="btn btn-primary">Go Home</a>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="session-message">
@@ -1145,12 +1329,45 @@ export default function Session() {
       </div>
     );
   }
+  // State-machine routing (Section 1, Plan v5):
+  //   'scheduled' → Lobby (Phase 2 — placeholder for now)
+  //   'active'    → Map (existing behavior, falls through to main render below)
+  //   'completed' → SessionRecap overlay rendered inside main render
+  // Default 'active' (from normalizeSession) ensures legacy sessions always
+  // reach the map render. The ghost transition in useSession has already fired
+  // by this point if scheduledTime has passed, so a briefly-visible placeholder
+  // is the worst-case UX — the Firebase onValue update will flip state to 'active'
+  // and React will re-render into the map view within milliseconds.
+  if (session?.state === 'scheduled') {
+    return (
+      <Lobby
+        session={session}
+        sessionId={sessionId}
+        participantId={participantId}
+        isHost={isHost}
+        isCoHost={isCoHost}
+        onJoin={handleLobbyJoin}
+        joining={joining}
+        votePoll={votePoll}
+        toggleReaction={toggleReaction}
+        kickParticipant={kickParticipant}
+        reclaimHost={reclaimHost}
+        showToast={showToast}
+        onToggleVisibility={(v) => { if (participantId) toggleVisibility(participantId, v); }}
+        onToggleNearby={(v) => { if (participantId) toggleNearby(participantId, v); }}
+      />
+    );
+  }
+
   // isEnded (host-ended) is handled below as a SessionRecap overlay so every
   // participant sees the podium/stats before being redirected home.
 
   // ────────────────────────────────────────────────────────────────
   // Main session render
   // ────────────────────────────────────────────────────────────────
+  // Base blue — color theming removed; buttons that sit on the accent color need white text
+  const themeColor = '#0066CC';
+
   return (
     <div className="session">
 
@@ -1193,19 +1410,22 @@ export default function Session() {
               })()}
             </div>
 
+            {/* Participant join count — small muted line below title/address */}
+            <div className="session-join-count" aria-live="polite">
+              {expectedCount
+                ? `${participantCount} of ${expectedCount} joined`
+                : `${participantCount} joined`}
+            </div>
+
+            {/* Group note — shown as header subtitle */}
+            {session?.notes && (
+              <div className="session-header-note" title={session.notes}>
+                {session.notes}
+              </div>
+            )}
+
             {/* Right: icon buttons — flex-shrink: 0 so they never get pushed off-screen */}
             <div className="session-header-btns">
-
-              {/* Note re-show button — mobile only, when group note auto-collapsed */}
-              {notesAutoCollapsed && !notesDismissed && session?.notes && (
-                <button
-                  className="notes-info-btn"
-                  onClick={() => setNotesAutoCollapsed(false)}
-                  aria-label="Show group note"
-                >
-                  <MatIcon name="description" size={20} />
-                </button>
-              )}
 
               {/* Navigate to destination */}
               {destination && (
@@ -1259,10 +1479,8 @@ export default function Session() {
                           role="menuitem"
                           onClick={() => {
                             setShowKebabMenu(false);
-                            setNotesDismissed(false);
-                            setNotesAutoCollapsed(false);
-                            setNotesEditing(true);
-                            setNotesEditText(session?.notes ?? '');
+                            const newNote = window.prompt('Group note (max 200 chars):', session?.notes || '');
+                            if (newNote !== null) updateNotes(newNote.slice(0, 200));
                           }}
                         >
                           <MatIcon name="description" size={20} />
@@ -1323,15 +1541,34 @@ export default function Session() {
           >
             <DestinationMarker destination={destination} />
 
+            {/* Stop markers — numbered circles at each waypoint */}
+            {(session?.stops || []).filter(s => s.lat != null).map((stop, i) => (
+              <OverlayView
+                key={`stop-${i}`}
+                position={{ lat: stop.lat, lng: stop.lng }}
+                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                getPixelPositionOffset={() => ({ x: -14, y: -14 })}
+              >
+                <div className="stop-marker" title={stop.name || `Stop ${i + 1}`}>
+                  <span className="stop-marker-number">{i + 1}</span>
+                  {stop.name && <span className="stop-marker-label">{stop.name}</span>}
+                </div>
+              </OverlayView>
+            ))}
+
             {participants.map(([id, p], index) => {
               // Spectators have no location or route — skip rendering entirely
               if (p.status === STATUS.SPECTATING) return null;
+              // Hidden participants: no route visible to other non-host/cohost viewers
+              if (p.visibility === 'hidden' && id !== participantId && !isHost && !isCoHost) return null;
               return <RoutePolyline key={`route-${id}`} participant={p} index={index} />;
             })}
 
             {participants.map(([id, p], index) => {
               // Spectators have no location — never render a map pin for them
               if (p.status === STATUS.SPECTATING) return null;
+              // Hidden participants: no map pin for other non-host/cohost viewers
+              if (p.visibility === 'hidden' && id !== participantId && !isHost && !isCoHost) return null;
               if (
                 p.status === STATUS.ARRIVED &&
                 !p.keepVisible &&
@@ -1373,17 +1610,6 @@ export default function Session() {
             </div>
           )}
 
-          {/* Floating re-open button — shown after notes banner is dismissed */}
-          {session?.notes && notesDismissed && (
-            <button
-              className="notes-reopen-btn"
-              onClick={() => setNotesDismissed(false)}
-              aria-label="Show group note"
-            >
-              <MatIcon name="description" size={20} />
-            </button>
-          )}
-
           {/* Re-center button — bottom-right, above collapsed ETA handle */}
           <RecenterButton
             mode={mapMode}
@@ -1392,85 +1618,6 @@ export default function Session() {
 
           {/* Status banners — stacked at top of map area */}
           <div className="session-banners">
-            {/* Group note — auto-collapses on mobile after 5 s; also shows when host opens edit mode */}
-            {!notesDismissed && (session?.notes || (isHost && notesEditing)) && (
-              <div
-                className={`notes-banner${notesAutoCollapsed ? ' notes-banner-auto-collapsed' : ''}`}
-                role="note"
-              >
-                {!notesEditing ? (
-                  <>
-                    <span className="notes-banner-icon" aria-hidden="true"><MatIcon name="description" size={20} /></span>
-                    <span className="notes-banner-text">{session.notes}</span>
-                    <div className="notes-banner-actions">
-                      {isHost && (
-                        <button
-                          className="notes-banner-btn notes-banner-btn-edit"
-                          onClick={() => { setNotesEditing(true); setNotesEditText(session.notes); }}
-                          aria-label="Edit group note"
-                        >
-                          <PencilIcon />
-                        </button>
-                      )}
-                      <button
-                        className="notes-banner-btn"
-                        onClick={() => setNotesDismissed(true)}
-                        aria-label="Dismiss note"
-                      >
-                        <MatIcon name="close" size={18} />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  /* Host edit mode */
-                  <>
-                    <span className="notes-banner-icon" aria-hidden="true"><MatIcon name="description" size={20} /></span>
-                    <div className="notes-edit-wrap">
-                      <textarea
-                        className="notes-edit-textarea"
-                        value={notesEditText}
-                        onChange={(e) => setNotesEditText(e.target.value.slice(0, 200))}
-                        maxLength={200}
-                        rows={2}
-                        autoFocus
-                        aria-label="Edit group note"
-                      />
-                      <div className="notes-edit-footer">
-                        <span className={`notes-edit-counter${notesEditText.length > 180 ? ' notes-edit-counter-warn' : ''}`}>
-                          {notesEditText.length} / 200
-                        </span>
-                        <div className="notes-edit-actions">
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setNotesEditing(false)}
-                            disabled={notesSaving}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            disabled={notesSaving}
-                            onClick={async () => {
-                              setNotesSaving(true);
-                              try {
-                                await updateNotes(notesEditText);
-                              } finally {
-                                setNotesSaving(false);
-                                setNotesEditing(false);
-                              }
-                            }}
-                          >
-                            {notesSaving ? 'Saving…' : 'Save'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Priority order (top to bottom): offline/connection > countdown > group note > nav tip */}
 
             {/* Feature 5: Firebase WebSocket connection status — highest priority */}
             {!firebaseConnected && (
@@ -1488,6 +1635,20 @@ export default function Session() {
               <div className="offline-banner" role="alert">
                 <MatIcon name="cloud_off" size={18} />
                 <span>No internet — updates are paused.</span>
+              </div>
+            )}
+
+            {/* Hidden mode indicator — persistent chip when current user is hidden */}
+            {participantId && myParticipant?.visibility === 'hidden' && (
+              <div className="session-hidden-mode-banner" role="status">
+                <MatIcon name="visibility_off" size={16} />
+                <span>You're in hidden mode</span>
+                <button
+                  className="session-hidden-mode-toggle"
+                  onClick={() => toggleVisibility(participantId, 'visible')}
+                >
+                  Go visible
+                </button>
               </div>
             )}
 
@@ -1549,53 +1710,91 @@ export default function Session() {
               </div>
             )}
             {allArrived && (
-              <div className="celebration-banner" role="status" aria-live="polite">
+              <div
+                className="celebration-banner"
+                role="status"
+                aria-live="polite"
+                style={{ color: getContrastTextColor(themeColor) }}
+              >
                 <MatIcon name="celebration" size={20} />
                 <span>Everyone's here!</span>
+              </div>
+            )}
+            {joinCountBanner && (
+              <div
+                className="celebration-banner"
+                role="status"
+                aria-live="polite"
+                style={{ background: '#16A34A', color: '#fff' }}
+              >
+                <MatIcon name="group" size={20} />
+                <span>Everyone's joined! 🎉</span>
               </div>
             )}
           </div>
 
           {/* "I'm Leaving Now" bar — hidden while countdown is active; revealed
-              once countdown expires (isTimeUp) or user clicks "Leave Early". */}
+              once countdown expires (isTimeUp) or user clicks "Leave Early".
+              'Maybe' location gate (Section 8, Plan v5): Maybe/Can't Go
+              participants see "Change to Going to Share Location" instead of
+              the travel mode selector and "I'm Leaving Now" — no location UI
+              until they commit to going. */}
           {showPreTripBar && (
             <div className="start-trip-bar">
-              <p className="start-trip-hint">How are you getting there?</p>
-
-              <div className="travel-mode-selector" role="group" aria-label="Travel mode">
-                {TRAVEL_MODE_OPTIONS.map((m) => (
+              {myParticipant && myParticipant.rsvpStatus !== 'going' ? (
+                <>
+                  <p className="start-trip-hint">
+                    {myParticipant.rsvpStatus === 'maybe' ? "You're on the maybe list" : "You can't make it"}
+                  </p>
                   <button
-                    key={m.value}
-                    className={`mode-btn${travelMode === m.value ? ' mode-btn-selected' : ''}`}
-                    onClick={() => { setTravelMode(m.value); setModeError(null); }}
-                    aria-label={m.label}
-                    aria-pressed={travelMode === m.value}
+                    className="btn btn-primary btn-full"
+                    onClick={handleChangeToGoing}
                   >
-                    <span className="mode-icon" aria-hidden="true">{m.icon}</span>
-                    <span className="mode-label">{m.label}</span>
+                    Change to Going to Share Location
                   </button>
-                ))}
-              </div>
+                </>
+              ) : (
+                <>
+                  <p className="start-trip-hint">How are you getting there?</p>
 
-              {modeError && <p className="error-msg" role="alert">{modeError}</p>}
-              <button
-                className={`btn btn-success btn-full${locationJustReady ? ' btn-location-ready' : ''}`}
-                onClick={handleStartTripClick}
-                disabled={!!startingPhase || preLocating}
-              >
-                {startingPhase === 'location'
-                  ? 'Getting your location…'
-                  : startingPhase === 'route'
-                    ? 'Calculating route…'
-                    : "I'm Leaving Now"}
-              </button>
-              <button
-                className="btn-spectate"
-                onClick={handleSetSpectating}
-                disabled={!!startingPhase}
-              >
-                Just watching? Join as spectator
-              </button>
+                  <div className="travel-mode-selector" role="group" aria-label="Travel mode">
+                    {TRAVEL_MODE_OPTIONS.map((m) => (
+                      <button
+                        key={m.value}
+                        className={`mode-btn${travelMode === m.value ? ' mode-btn-selected' : ''}`}
+                        onClick={() => { setTravelMode(m.value); setModeError(null); }}
+                        aria-label={m.label}
+                        aria-pressed={travelMode === m.value}
+                        style={travelMode === m.value ? { color: getContrastTextColor(themeColor) } : {}}
+                      >
+                        <span className="mode-icon" aria-hidden="true">{m.icon}</span>
+                        <span className="mode-label">{m.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {modeError && <p className="error-msg" role="alert">{modeError}</p>}
+                  <button
+                    className={`btn btn-success btn-full${locationJustReady ? ' btn-location-ready' : ''}`}
+                    onClick={handleStartTripClick}
+                    disabled={!!startingPhase || preLocating}
+                    style={{ color: getContrastTextColor(themeColor) }}
+                  >
+                    {startingPhase === 'location'
+                      ? 'Getting your location…'
+                      : startingPhase === 'route'
+                        ? 'Calculating route…'
+                        : "I'm Leaving Now"}
+                  </button>
+                  <button
+                    className="btn-spectate"
+                    onClick={handleSetSpectating}
+                    disabled={!!startingPhase}
+                  >
+                    Just watching? Join as spectator
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -1603,10 +1802,12 @@ export default function Session() {
         {/* ── ETA panel — bottom sheet on mobile, sidebar on desktop ── */}
         <ETAPanel
           sessionId={sessionId}
+          session={session}
           participants={participants}
           currentParticipantId={participantId}
           destination={destination}
           isSidebar={isSidebar}
+          isHost={isHost}
           onPause={handlePause}
           onResume={handleResume}
           onSwitchMode={handleSwitchTravelMode}
@@ -1622,6 +1823,10 @@ export default function Session() {
           onManualArrival={handleManualArrival}
           showImHereButton={showImHereButton}
           hostId={session?.hostId}
+          isViewerHostOrCoHost={isHost || isCoHost}
+          onPromoteCoHost={promoteCoHost}
+          onDemoteCoHost={demoteCoHost}
+          onToggleVisibility={(v) => { if (participantId) toggleVisibility(participantId, v); }}
           gpsLost={gpsLost}
           onHeightChange={!isSidebar ? handlePanelHeightChange : undefined}
           onExitSpectating={handleExitSpectating}
@@ -1646,6 +1851,7 @@ export default function Session() {
           subtitle={`Joining: ${destination.name || destination.address || 'Meetup'}`}
           onSubmit={handleJoin}
           loading={joining}
+          themeColor={themeColor}
         />
       )}
 
@@ -1694,7 +1900,16 @@ export default function Session() {
           session={session}
           participants={participants}
           destination={destination}
+          myParticipantId={participantId}
+          onSaveMemory={(text) => saveHighlightMemory(participantId, text)}
           onDone={() => navigate('/')}
+          isHost={isHost}
+          onClone={() => navigate('/create', { state: { cloneFrom: {
+            destination:  session.destination,
+            nickname:     session.nickname     ?? null,
+            theme:        session.theme        ?? null,
+            logistics:    session.logistics    ?? null,
+          }}})}
         />
       )}
     </div>

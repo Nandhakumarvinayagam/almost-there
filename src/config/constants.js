@@ -41,10 +41,10 @@ export const ALMOST_THERE_MULTIPLIER  = 3;
 // Customisable arrival radius options shown on the Create page.
 // arrivalRadius stored in Firebase overrides ARRIVED_METERS on the session.
 export const ARRIVAL_RADIUS_OPTIONS = [
-  { label: 'Exact',      meters: 50,  icon: '🏠' },
-  { label: 'Default',    meters: 100, icon: '📍' },
-  { label: 'Nearby',     meters: 250, icon: '🏘️' },
-  { label: 'Area-wide',  meters: 500, icon: '🌎' },
+  { label: 'Exact',      meters: 50,  icon: '📍' },
+  { label: 'Close',      meters: 100, icon: '🏠' },
+  { label: 'Default',    meters: 250, icon: '🎯' },
+  { label: 'Area-wide',  meters: 500, icon: '📡' },
 ];
 
 // Travel mode values — passed to the Directions API as travelMode
@@ -95,18 +95,3 @@ export const STATUS_EMOJIS = [
   { emoji: '🛒', label: 'Quick errand' },
 ];
 
-// Emoji-to-Material-Symbol mapping — used during the emoji → icon migration
-export const EMOJI_TO_ICON = {
-  '☕': 'coffee',
-  '⛽': 'local_gas_station',
-  '🅿️': 'local_parking',
-  '🚦': 'traffic',
-  '🏃': 'sprint',
-  '🛒': 'shopping_cart',
-};
-
-// Material Symbol names corresponding to STATUS_EMOJIS order
-export const STATUS_ICONS = [
-  'coffee', 'local_gas_station', 'local_parking',
-  'traffic', 'sprint', 'shopping_cart',
-];

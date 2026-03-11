@@ -10,4 +10,7 @@ export default defineConfig({
       tsconfigRaw: '{}',
     },
   },
+  test: {
+    environment: 'node',
+  },
 })

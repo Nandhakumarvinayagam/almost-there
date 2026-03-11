@@ -1,11 +1,16 @@
 import { OverlayView } from '@react-google-maps/api';
-import { STALE_THRESHOLD, STATUS, EMOJI_TO_ICON } from '../config/constants';
+import { STALE_THRESHOLD, STATUS } from '../config/constants';
 import { getParticipantColor } from '../utils/participantColor';
 import { useNow } from '../hooks/useNow';
 import MatIcon from './MatIcon';
 import { timeAgo } from '../utils/formatters';
+import { AvatarIcon } from './Avatars';
 
 const DOT_SIZE = 36; // width and height of the dot circle
+
+// Backward-compat: legacy data stored Material icon names (e.g. "coffee");
+// newer data stores actual emoji chars (e.g. "☕"). Map old → new for display.
+const ICON_TO_EMOJI = { coffee: '☕', local_gas_station: '⛽', local_parking: '🅿️', traffic: '🚦', sprint: '🏃', shopping_cart: '🛒' };
 
 // Anchor the dot's centre exactly on the coordinate using fixed pixel values.
 // The container div is always DOT_SIZE × DOT_SIZE; the bubble is absolutely
@@ -39,8 +44,11 @@ export default function ParticipantMarker({
 
   const almostThere = participant.status === STATUS.ALMOST_THERE;
 
+  const hasAvatar = participant.avatarId != null;
+
   const dotClasses = [
     'p-marker-dot',
+    hasAvatar   ? 'p-marker-dot-avatar'       : '',
     isStale     ? 'p-marker-dot-stale'        : '',
     arrived     ? 'p-marker-dot-arrived'      : '',
     almostThere ? 'p-marker-dot-almost-there' : '',
@@ -88,24 +96,27 @@ export default function ParticipantMarker({
           )}
         </div>
 
-        {/* 36px circle dot with initial letter */}
-        <div className={dotClasses} style={{ background: color }}>
-          <span className="p-marker-initial">{initial}</span>
+        {/* 36px circle dot with avatar or initial letter.
+            Avatar mode: no colored background (emoji has its own intrinsic colors).
+            Initial mode: colored circle with white letter as before. */}
+        <div className={dotClasses} style={hasAvatar ? undefined : { background: color }}>
+          {hasAvatar
+            ? <AvatarIcon avatarId={participant.avatarId} size={28} />
+            : <span className="p-marker-initial">{initial}</span>
+          }
           {arrived && <MatIcon name="check_circle" size={16} fill className="p-marker-check" />}
           {/* Pause icon overlay — centered on dot, white, distinct from stale dashed border */}
           {isPaused && <MatIcon name="pause_circle" size={16} className="p-marker-pause-icon" />}
         </div>
 
-        {/* Status emoji badge — floats below the dot */}
-        {(() => {
-          const iconName = participant.statusEmoji
-            ? (EMOJI_TO_ICON[participant.statusEmoji] || participant.statusEmoji)
-            : null;
-          return iconName ? (
-            <div className="p-marker-emoji-badge" aria-label={`Status: ${participant.statusEmoji}`}>
-              <MatIcon name={iconName} size={14} />
+        {/* Status emoji badge — floats below the dot; rendered as raw emoji for reliability */}
+        {participant.statusEmoji?.trim() && (() => {
+          const displayEmoji = ICON_TO_EMOJI[participant.statusEmoji] || participant.statusEmoji;
+          return (
+            <div className="p-marker-emoji-badge" aria-label={`Status: ${displayEmoji}`}>
+              <span style={{ fontSize: 12, lineHeight: 1 }}>{displayEmoji}</span>
             </div>
-          ) : null;
+          );
         })()}
       </div>
     </OverlayView>
